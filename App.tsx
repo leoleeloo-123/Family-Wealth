@@ -75,9 +75,8 @@ const NavItem: React.FC<{
   item: any; 
   activeTab: string; 
   setActiveTab: (tab: any) => void; 
-  theme: 'light' | 'dark'; 
   isSidebarOpen: boolean; 
-}> = ({ item, activeTab, setActiveTab, theme, isSidebarOpen }) => (
+}> = ({ item, activeTab, setActiveTab, isSidebarOpen }) => (
   <button
     onClick={() => setActiveTab(item.id as any)}
     className={`w-full flex items-center transition-all duration-300 group mb-3 ${
@@ -109,11 +108,15 @@ export const AppContext = createContext<AppContextType | null>(null);
 const App: React.FC = () => {
   const [data, setData] = useState<AppData>(INITIAL_APP_DATA);
   const [activeTab, setActiveTab] = useState<'Dashboard' | 'Records' | 'MasterData' | 'DataManagement' | 'Settings'>('Dashboard');
-  const [settings, setSettings] = useState<AppSettings>({
-    theme: 'light',
-    baseCurrency: 'CNY',
-    fontSize: 'medium',
-    dateFormat: 'YYYY-MM-DD'
+  const [settings, setSettings] = useState<AppSettings>(() => {
+    const saved = localStorage.getItem('family_asset_settings');
+    return saved ? JSON.parse(saved) : {
+      theme: 'light',
+      baseCurrency: 'CNY',
+      fontSize: 'medium',
+      dateFormat: 'YYYY-MM-DD',
+      language: 'zh'
+    };
   });
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [useExternalLogo, setUseExternalLogo] = useState(false);
@@ -124,20 +127,30 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => { localStorage.setItem('family_asset_data', JSON.stringify(data)); }, [data]);
+  useEffect(() => { localStorage.setItem('family_asset_settings', JSON.stringify(settings)); }, [settings]);
 
   const generateId = useCallback((p: string) => `${p}-${Date.now().toString().slice(-6)}`, []);
 
   const mainMenuItems = [
-    { id: 'Dashboard', label: 'Dashboard', icon: <LayoutDashboard size={24} strokeWidth={2.5} /> },
-    { id: 'Records', label: 'Records', icon: <History size={24} strokeWidth={2.5} /> },
-    { id: 'MasterData', label: 'Master Data', icon: <Database size={24} strokeWidth={2.5} /> },
-    { id: 'DataManagement', label: 'Data Management', icon: <FileSpreadsheet size={24} strokeWidth={2.5} /> },
-    { id: 'Settings', label: 'Settings', icon: <SettingsIcon size={24} strokeWidth={2.5} /> },
+    { id: 'Dashboard', label: settings.language === 'en' ? 'Dashboard' : '仪表盘', icon: <LayoutDashboard size={24} strokeWidth={2.5} /> },
+    { id: 'Records', label: settings.language === 'en' ? 'Records' : '历史记录', icon: <History size={24} strokeWidth={2.5} /> },
+    { id: 'MasterData', label: settings.language === 'en' ? 'Master Data' : '基础数据', icon: <Database size={24} strokeWidth={2.5} /> },
+    { id: 'DataManagement', label: settings.language === 'en' ? 'Data Management' : '数据管理', icon: <FileSpreadsheet size={24} strokeWidth={2.5} /> },
+    { id: 'Settings', label: settings.language === 'en' ? 'Settings' : '系统设置', icon: <SettingsIcon size={24} strokeWidth={2.5} /> },
   ];
+
+  const fontSizeStyles = {
+    small: '0.875rem',
+    medium: '1rem',
+    large: '1.125rem'
+  }[settings.fontSize];
 
   return (
     <AppContext.Provider value={{ data, setData, settings, setSettings, generateId, setActiveTab }}>
-      <div className="flex h-screen w-full p-4 gap-4 overflow-hidden">
+      <div 
+        className="flex h-screen w-full p-4 gap-4 overflow-hidden transition-all duration-500"
+        style={{ fontSize: fontSizeStyles }}
+      >
         {/* Glass Sidebar */}
         <aside className={`${isSidebarOpen ? 'w-80' : 'w-24'} glass-sidebar rounded-[32px] transition-all duration-500 flex flex-col shadow-2xl relative z-30`}>
           <div className="p-8 flex items-center overflow-hidden">
@@ -148,7 +161,7 @@ const App: React.FC = () => {
               </div>
               {isSidebarOpen && (
                 <h1 className="font-black text-2xl tracking-tighter text-slate-800 animate-in fade-in slide-in-from-left-4 duration-500">
-                  Assets
+                  {settings.language === 'en' ? 'Assets' : '家庭资产'}
                 </h1>
               )}
             </div>
@@ -156,7 +169,7 @@ const App: React.FC = () => {
           
           <nav className={`flex-1 mt-4 overflow-y-auto ${isSidebarOpen ? 'px-5' : 'px-0'}`}>
             {mainMenuItems.map((item) => (
-              <NavItem key={item.id} item={item} activeTab={activeTab} setActiveTab={setActiveTab} theme={settings.theme} isSidebarOpen={isSidebarOpen} />
+              <NavItem key={item.id} item={item} activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
             ))}
           </nav>
 

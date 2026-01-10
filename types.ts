@@ -114,8 +114,6 @@ export interface LoanRecord {
 export interface DividendRecord {
   资产ID: string;
   资产昵称: string;
-  账户ID: string;
-  账户昵称: string;
   时间: string;
   公司总分红: number;
   币种: string;
@@ -145,4 +143,5 @@ export interface AppSettings {
   baseCurrency: string;
   fontSize: 'small' | 'medium' | 'large';
   dateFormat: string;
+  language: 'en' | 'zh';
 }
