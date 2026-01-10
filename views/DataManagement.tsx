@@ -1,22 +1,19 @@
 
-import React, { useContext, useState, useRef, useMemo } from 'react';
+import React, { useContext, useState, useRef } from 'react';
 import { AppContext } from '../App';
 import { 
   Upload, 
   Download, 
-  CheckCircle2, 
-  AlertTriangle, 
-  FileText, 
-  Activity, 
+  Eye, 
   ChevronRight, 
-  Database,
-  Info,
-  AlertCircle,
+  Activity, 
+  ShieldCheck, 
+  CheckCircle2,
+  Trash2,
   Table as TableIcon,
-  ShieldCheck,
-  XCircle,
-  Eye,
-  ChevronLeft
+  AlertCircle,
+  X,
+  Database
 } from 'lucide-react';
 import { parseExcelFile, exportToExcel } from '../utils/excelHelper';
 import { AppData, TabName } from '../types';
@@ -27,238 +24,231 @@ const DataManagementView: React.FC = () => {
   if (!context) return null;
   const { data: currentData, setData } = context;
 
-  const [parsingStatus, setParsingStatus] = useState<'idle' | 'parsing' | 'reviewed'>('idle');
-  const [reviewMode, setReviewMode] = useState<'import' | 'current' | null>(null);
-  const [logs, setLogs] = useState<string[]>([]);
+  const [parsingStatus, setParsingStatus] = useState<'idle' | 'parsing'>('idle');
   const [tempData, setTempData] = useState<AppData | null>(null);
-  const [previewTab, setPreviewTab] = useState<TabName>('成员');
+  const [isReviewingCurrent, setIsReviewingCurrent] = useState(false);
+  const [activePreviewTab, setActivePreviewTab] = useState<TabName>('成员');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setParsingStatus('parsing');
-    setLogs([]);
     try {
-      const { data: parsedData, logs: parsingLogs } = await parseExcelFile(file);
+      const { data: parsedData } = await parseExcelFile(file);
       setTempData(parsedData);
-      setLogs(parsingLogs);
-      setParsingStatus('reviewed');
-      setReviewMode('import');
-      
-      const firstTabWithData = (Object.keys(parsedData) as TabName[]).find(t => parsedData[t].length > 0);
-      setPreviewTab(firstTabWithData || '成员');
+      setIsReviewingCurrent(false);
+      const firstTab = Object.keys(parsedData).find(k => (parsedData[k as TabName] as any[]).length > 0) as TabName;
+      if (firstTab) setActivePreviewTab(firstTab);
     } catch (err) {
-      console.error("Import Error:", err);
-      alert("Error parsing file: " + err);
-      setParsingStatus('idle');
+      alert("Sync Failed: " + err);
     } finally {
+      setParsingStatus('idle');
       if (e.target) e.target.value = '';
     }
   };
 
-  const handleImport = () => {
-    if (!tempData) {
-      alert("Error: No data available to import.");
-      return;
-    }
-    
-    // User requested removal of the confirmation pop-up.
-    // Proceeding directly to overwrite.
-    try {
-      console.log("Committing new data to state...", tempData);
-      
-      // Deep clone to avoid reference issues
-      const dataToSave = JSON.parse(JSON.stringify(tempData));
-      setData(dataToSave);
-      
-      alert("Import Successful! The database has been updated.");
-      
-      // Reset view
-      setReviewMode(null);
+  const handleCompleteOverwrite = () => {
+    if (tempData) {
+      setData(tempData);
       setTempData(null);
-      setParsingStatus('idle');
-    } catch (err) {
-      console.error("Import execution failed:", err);
-      alert("Import failed during state update: " + err);
+      alert("Database Fully Overwritten Successfully.");
     }
   };
 
-  const openCurrentReview = () => {
-    setReviewMode('current');
-    setPreviewTab('成员');
-  };
-
-  const closeReview = () => {
-    setReviewMode(null);
-    if (reviewMode === 'import') {
+  const handleDiscard = () => {
+    if (window.confirm("Discard incoming data?")) {
       setTempData(null);
-      setParsingStatus('idle');
     }
   };
 
-  const handleExport = () => {
-    exportToExcel(currentData);
-  };
-
-  const triggerFilePicker = () => {
-    fileInputRef.current?.click();
-  };
-
-  const activeReviewData = reviewMode === 'import' ? tempData : currentData;
-
-  const previewValidation = useMemo(() => {
-    if (!activeReviewData) return { missingCols: [], hasData: false };
-    const expected = EXCEL_STRUCTURE[previewTab];
-    const rows = activeReviewData[previewTab];
-    const actual = rows.length > 0 ? Object.keys(rows[0]) : [];
-    const missing = expected.filter(col => !actual.includes(col));
-    return {
-      missingCols: missing,
-      hasData: rows.length > 0
-    };
-  }, [activeReviewData, previewTab, reviewMode]);
+  // Determine which dataset to show in the preview grid
+  const previewData = tempData || (isReviewingCurrent ? currentData : null);
+  const isIncoming = !!tempData;
 
   return (
-    <div className="flex flex-col gap-8 pb-20">
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
-        <div className="xl:col-span-7 space-y-6">
-          <div className="p-10 border-2 border-dashed border-gray-200 rounded-3xl bg-white flex flex-col items-center text-center shadow-sm">
-            <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-6 ring-8 ring-blue-50/50">
-              {parsingStatus === 'parsing' ? <Activity className="animate-spin" size={36} /> : <Upload size={36} />}
-            </div>
-            <h3 className="text-2xl font-bold mb-3">Excel Source Protocol</h3>
-            <p className="text-gray-500 mb-8 max-w-sm leading-relaxed text-sm">
-              Upload your spreadsheet to refresh the entire system. <span className="text-red-500 font-bold">This replaces all current memory.</span>
-            </p>
-            <input type="file" ref={fileInputRef} accept=".xlsx, .xls" onChange={handleFileSelect} className="hidden" />
-            <button onClick={triggerFilePicker} className="group bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-2xl font-bold shadow-xl shadow-blue-500/20 transition-all flex items-center gap-3">
-              {parsingStatus === 'parsing' ? 'Analyzing...' : 'Select Excel File'}
-              <ChevronRight size={18} />
-            </button>
-          </div>
-        </div>
-
-        <div className="xl:col-span-5 space-y-6">
-          <div className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm space-y-6">
-            <h3 className="text-xl font-bold flex items-center gap-3"><Activity className="text-emerald-500" size={24} /> Database Tools</h3>
-            <div className="space-y-3">
-              <button onClick={openCurrentReview} className="w-full flex items-center justify-between p-5 rounded-2xl border border-gray-100 hover:border-emerald-500 hover:bg-emerald-50 transition-all group bg-slate-50/50">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-white rounded-xl text-emerald-500 shadow-sm border border-emerald-50 group-hover:scale-110 transition-transform"><Eye size={24} /></div>
-                  <div className="text-left">
-                    <p className="font-bold text-slate-800 text-sm">Review Current Data</p>
-                    <p className="text-[11px] text-slate-500">View what's currently in memory.</p>
-                  </div>
-                </div>
-                <ChevronRight className="text-slate-300" size={20} />
-              </button>
-              <button onClick={handleExport} className="w-full flex items-center justify-between p-5 rounded-2xl border border-gray-100 hover:border-blue-500 hover:bg-blue-50 transition-all group bg-slate-50/50">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-white rounded-xl text-blue-500 shadow-sm border border-blue-50 group-hover:scale-110 transition-transform"><Download size={24} /></div>
-                  <div className="text-left">
-                    <p className="font-bold text-slate-800 text-sm">Export Snapshot</p>
-                    <p className="text-[11px] text-slate-500">Download current data as Excel.</p>
-                  </div>
-                </div>
-                <ChevronRight className="text-slate-300" size={20} />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {reviewMode && activeReviewData && (
-        <div className="bg-white rounded-3xl border border-gray-200 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-6 duration-500">
-          <div className={`p-6 text-white flex flex-col md:flex-row items-center justify-between gap-4 ${reviewMode === 'import' ? 'bg-blue-600' : 'bg-emerald-600'}`}>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center"><TableIcon size={24} /></div>
-              <div>
-                <h4 className="text-xl font-black">{reviewMode === 'import' ? 'Incoming Data Preview' : 'System Database View'}</h4>
-                <p className="text-white/80 text-xs">{reviewMode === 'import' ? 'Review values before final import.' : 'Viewing active system records.'}</p>
+    <div className="w-[96%] max-w-[1900px] mx-auto space-y-10 pb-12 animate-in fade-in duration-700">
+      
+      {/* Initial Upload & Tools View - Dynamic Spacing */}
+      {!previewData && (
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-10 items-stretch">
+          {/* Upload Area - Expansive */}
+          <div className="xl:col-span-8 glass-card rounded-[56px] p-20 flex flex-col items-center justify-center text-center group border-2 border-dashed border-white/40 hover:border-blue-500/50 transition-all cursor-pointer relative overflow-hidden min-h-[500px]"
+               onClick={() => fileInputRef.current?.click()}>
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
+            <div className="relative mb-12">
+              <div className="absolute inset-0 bg-blue-400/30 blur-[60px] rounded-full group-hover:scale-150 transition-transform duration-1000"></div>
+              <div className="w-32 h-32 bg-white/90 rounded-[44px] flex items-center justify-center relative z-10 shadow-2xl border border-white/60">
+                {parsingStatus === 'parsing' ? <Activity className="animate-spin text-blue-600" size={56} /> : <Upload className="text-blue-600" size={56} />}
               </div>
             </div>
-            <div className="flex gap-3">
-              <button onClick={closeReview} className="px-6 py-2 bg-white/10 hover:bg-white/20 rounded-xl font-bold text-sm border border-white/20 transition-all">
-                {reviewMode === 'import' ? 'Discard' : 'Close'}
-              </button>
-              {reviewMode === 'import' && (
-                <button onClick={handleImport} className="px-8 py-2 bg-slate-900 text-white hover:bg-black rounded-xl font-black text-sm shadow-xl transition-all">
-                  Complete Overwrite
+            <h3 className="text-5xl font-black mb-6 text-slate-800 tracking-tighter">Excel Source Protocol</h3>
+            <p className="text-slate-500 mb-12 text-lg leading-relaxed max-w-2xl font-medium">
+              Refresh your entire system intelligence by uploading the master asset spreadsheet. 
+              <span className="block mt-4 text-red-500/80 font-black uppercase tracking-[0.2em] text-[10px] bg-red-50 py-2 px-6 rounded-full inline-block shadow-sm">Warning: Destructive Write Operation</span>
+            </p>
+            <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
+            <div className="px-16 py-6 bg-blue-600 text-white rounded-[32px] font-black uppercase tracking-[0.3em] text-xs shadow-3xl shadow-blue-500/40 group-hover:scale-105 active:scale-95 transition-all flex items-center gap-4">
+              Select Excel File <ChevronRight size={20} />
+            </div>
+          </div>
+
+          {/* Tools Area - High Information Density */}
+          <div className="xl:col-span-4 flex flex-col gap-8">
+            <div className="p-10 rounded-[48px] bg-white/40 border border-white/60 backdrop-blur-xl flex items-center gap-8 shadow-sm">
+               <div className="w-20 h-20 bg-blue-600 text-white rounded-[32px] flex items-center justify-center shadow-2xl rotate-3 group-hover:rotate-0 transition-transform"><TableIcon size={32}/></div>
+               <div>
+                 <h4 className="font-black text-slate-900 text-2xl tracking-tight">Database Vault</h4>
+                 <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.4em] mt-1">Maintenance Protocol</p>
+               </div>
+            </div>
+            
+            <div className="flex-1 space-y-6">
+              <ToolAction 
+                icon={<Eye size={24}/>} 
+                title="Review Current Data" 
+                desc="Audit the active local memory records." 
+                onClick={() => {
+                  setIsReviewingCurrent(true);
+                  setActivePreviewTab('成员');
+                }} 
+                color="text-slate-500" 
+              />
+              <ToolAction 
+                icon={<Download size={24}/>} 
+                title="Export Snapshot" 
+                desc="Generate an .xlsx backup of current state." 
+                onClick={() => exportToExcel(currentData)} 
+                color="text-emerald-500" 
+              />
+            </div>
+
+            <div className="p-10 rounded-[48px] bg-slate-900/5 border border-white/30 backdrop-blur-md flex flex-col gap-4">
+               <div className="flex items-center gap-3">
+                 <ShieldCheck className="text-blue-600" size={20}/>
+                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-800">Privacy Verification</span>
+               </div>
+               <p className="text-xs text-slate-500 leading-relaxed font-bold italic">
+                 "Architecture strictly local. No assets or account details are ever transmitted outside this browser environment."
+               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Preview View - Dynamic Full-Width Utilization */}
+      {previewData && (
+        <div className="space-y-8 animate-in slide-in-from-bottom-16 duration-1000">
+          {/* Enhanced Action Bar - Wider & More Dynamic */}
+          <div className={`glass-card rounded-[40px] p-8 flex items-center justify-between border-none shadow-3xl relative overflow-hidden transition-all duration-700 ${isIncoming ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white' : 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white'}`}>
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+            <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent"></div>
+            
+            <div className="flex items-center gap-8 px-6 relative z-10">
+               <div className="w-16 h-16 bg-white/20 rounded-3xl flex items-center justify-center backdrop-blur-2xl border border-white/40 shadow-inner">
+                 {isIncoming ? <Activity size={32} className="animate-pulse" /> : <Database size={32} />}
+               </div>
+               <div>
+                 <h3 className="text-3xl font-black tracking-tighter mb-1">{isIncoming ? 'Incoming Intelligence Preview' : 'Active System Database'}</h3>
+                 <div className="flex items-center gap-3 text-[10px] opacity-80 uppercase tracking-[0.4em] font-black">
+                   <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                   {isIncoming ? 'Validation Required: Inspect Integrity' : 'Viewing real-time browser storage records.'}
+                 </div>
+               </div>
+            </div>
+
+            <div className="flex gap-6 px-4 relative z-10">
+              {isIncoming ? (
+                <>
+                  <button onClick={handleDiscard} className="px-10 py-4 rounded-2xl text-xs font-black uppercase tracking-[0.2em] hover:bg-white/10 transition-all border border-white/30 backdrop-blur-md">Discard Sync</button>
+                  <button onClick={handleCompleteOverwrite} className="px-12 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-[0.2em] shadow-4xl hover:bg-black hover:scale-105 active:scale-95 transition-all flex items-center gap-3 group">
+                    Complete Overwrite <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                  </button>
+                </>
+              ) : (
+                <button onClick={() => setIsReviewingCurrent(false)} className="px-12 py-4 bg-white/20 text-white rounded-2xl text-xs font-black uppercase tracking-[0.2em] backdrop-blur-xl border border-white/30 hover:bg-white/30 hover:scale-105 transition-all flex items-center gap-3">
+                  <X size={20} /> Close View
                 </button>
               )}
             </div>
           </div>
 
-          <div className="flex flex-col lg:flex-row min-h-[500px]">
-            <div className="w-full lg:w-64 bg-slate-50 border-r border-slate-100 p-4 space-y-1.5 overflow-y-auto">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter px-3 mb-4">Worksheets</p>
-              {(Object.keys(EXCEL_STRUCTURE) as TabName[]).map(tab => {
-                const count = activeReviewData[tab]?.length || 0;
-                const isActive = previewTab === tab;
-                const colorClass = reviewMode === 'import' ? 'blue' : 'emerald';
-                return (
-                  <button key={tab} onClick={() => setPreviewTab(tab)} className={`w-full flex items-center justify-between p-3 rounded-xl transition-all ${isActive ? `bg-white shadow-md border-l-4 border-${colorClass}-500 text-${colorClass}-700 font-bold` : 'hover:bg-slate-100 text-slate-500'}`}>
-                    <span className="text-sm truncate">{tab}</span>
-                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${count > 0 ? `bg-${colorClass}-50 text-${colorClass}-600` : 'bg-slate-200 text-slate-400'}`}>{count}</span>
-                  </button>
-                );
-              })}
+          {/* Expansive Full-Width Layout */}
+          <div className="flex flex-col xl:flex-row gap-8 min-h-[800px]">
+            {/* Sidebar: Optimized for Wide Screens */}
+            <div className="w-full xl:w-80 glass-card rounded-[48px] p-8 flex flex-col bg-white/30 backdrop-blur-xl border-white/60">
+               <p className="px-6 py-5 text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] border-b border-white/30 mb-6 flex justify-between items-center">
+                 Memory Segments
+                 <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+               </p>
+               <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar pr-2">
+                 {(Object.keys(EXCEL_STRUCTURE) as TabName[]).map(tab => {
+                   const count = (previewData[tab] as any[]).length;
+                   const isActive = activePreviewTab === tab;
+                   return (
+                    <button 
+                      key={tab}
+                      onClick={() => setActivePreviewTab(tab)}
+                      className={`w-full flex items-center justify-between p-6 rounded-[28px] transition-all duration-500 group ${isActive ? 'bg-white shadow-2xl scale-[1.04] text-blue-600 ring-1 ring-blue-50' : 'hover:bg-white/50 text-slate-500'}`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`w-2.5 h-2.5 rounded-full transition-all duration-700 ${isActive ? (isIncoming ? 'bg-blue-600' : 'bg-emerald-600') + ' scale-150 shadow-[0_0_12px_rgba(37,99,235,0.4)]' : 'bg-slate-300 group-hover:bg-slate-400'}`}></div>
+                        <span className="text-base font-black tracking-tight">{tab}</span>
+                      </div>
+                      <span className={`text-[11px] px-4 py-1.5 rounded-full font-black ${isActive ? (isIncoming ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600') : 'bg-slate-100 text-slate-400 shadow-inner'}`}>{count}</span>
+                    </button>
+                   );
+                 })}
+               </div>
             </div>
 
-            <div className="flex-1 flex flex-col bg-white overflow-hidden">
-              <div className="px-8 py-6 border-b flex items-center justify-between bg-slate-50/30">
-                <h5 className="text-xl font-black text-slate-800">{previewTab} <span className="text-xs font-normal text-slate-400 ml-2">{activeReviewData[previewTab]?.length || 0} Records</span></h5>
-                <div className="flex gap-4">
-                  {reviewMode === 'import' && (
-                    previewValidation.missingCols.length > 0 ? (
-                      <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 rounded-xl border border-amber-100 text-xs font-bold"><AlertTriangle size={14} /> {previewValidation.missingCols.length} Missing Cols</div>
-                    ) : (
-                      <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-100 text-xs font-bold"><ShieldCheck size={14} /> Structure Matches</div>
-                    )
-                  )}
-                </div>
+            {/* Hyper-Expansive Table Area */}
+            <div className="flex-1 glass-card rounded-[48px] overflow-hidden flex flex-col bg-white/10 relative border-white/50 shadow-inner">
+              <div className="p-10 border-b border-white/20 flex items-center justify-between bg-white/60 backdrop-blur-2xl z-20">
+                 <div className="flex items-center gap-8">
+                   <h4 className="text-4xl font-black text-slate-900 tracking-tighter">{activePreviewTab}</h4>
+                   <div className="px-6 py-2 bg-slate-900/5 rounded-full border border-slate-900/5 backdrop-blur-md">
+                     <span className="text-xs text-slate-500 font-black uppercase tracking-[0.2em]">{previewData[activePreviewTab]?.length || 0} Entities in segment</span>
+                   </div>
+                 </div>
+                 <div className={`flex items-center gap-3 px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-[0.3em] shadow-sm border ${isIncoming ? 'bg-blue-500/10 border-blue-500/20 text-blue-600' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600'}`}>
+                    <CheckCircle2 size={18} /> {isIncoming ? 'Structure Verified' : 'Local Hash Match'}
+                 </div>
               </div>
-
-              <div className="flex-1 overflow-auto bg-slate-50/20 relative">
-                {previewValidation.hasData ? (
-                  <div className="inline-block min-w-full align-middle p-4">
-                    <div className="overflow-hidden border border-slate-200 rounded-xl shadow-sm bg-white">
-                      <table className="min-w-max w-full divide-y divide-slate-200 text-sm table-auto">
-                        <thead className="bg-slate-100">
-                          <tr>
-                            {EXCEL_STRUCTURE[previewTab].map(col => (
-                              <th key={col} className="px-6 py-4 font-black text-slate-500 text-[9px] uppercase tracking-widest text-left border-r border-slate-200 last:border-r-0">{col}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {activeReviewData[previewTab].map((row: any, i) => (
-                            <tr key={i} className="hover:bg-slate-50 transition-colors">
-                              {EXCEL_STRUCTURE[previewTab].map(col => (
-                                <td key={col} className="px-6 py-3.5 text-slate-600 whitespace-nowrap text-xs border-r border-slate-50 last:border-r-0">
-                                  {row[col] !== undefined && row[col] !== null 
-                                    ? (typeof row[col] === 'number' ? row[col].toLocaleString() : String(row[col])) 
-                                    : <span className="text-slate-200">-</span>}
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="h-full flex flex-col items-center justify-center p-20 text-center text-slate-400">
-                    <XCircle size={48} className="text-slate-200 mb-4" />
-                    <p className="font-bold">Worksheet is Empty</p>
-                  </div>
-                )}
-              </div>
-              <div className="px-6 py-3 bg-slate-50 border-t flex items-center justify-between">
-                <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold"><Info size={12} /> Scroll right to view more columns.</div>
-                <div className="flex items-center gap-1 text-[10px] font-black text-slate-300 uppercase tracking-widest">End of Table</div>
+              
+              <div className="flex-1 overflow-auto custom-scrollbar-wide bg-white/20">
+                <table className="w-full text-left border-separate border-spacing-0">
+                  <thead className="sticky top-0 z-10">
+                    <tr>
+                      {EXCEL_STRUCTURE[activePreviewTab].map(col => (
+                        <th key={col} className="px-10 py-7 bg-white/80 backdrop-blur-xl text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] border-b border-white/30 whitespace-nowrap shadow-sm">{col}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="text-base">
+                    {(previewData[activePreviewTab] as any[]).map((row, i) => (
+                      <tr key={i} className="hover:bg-white/60 transition-all duration-300 group">
+                        {EXCEL_STRUCTURE[activePreviewTab].map(col => (
+                          <td key={col} className="px-10 py-7 text-slate-600 whitespace-nowrap border-b border-white/10 font-bold group-hover:text-slate-900 transition-colors">
+                            {row[col] !== null && row[col] !== undefined ? String(row[col]) : <span className="text-slate-300 font-medium italic opacity-50">#null_ptr</span>}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                    {(previewData[activePreviewTab] as any[]).length === 0 && (
+                      <tr>
+                        <td colSpan={EXCEL_STRUCTURE[activePreviewTab].length} className="px-10 py-48 text-center">
+                          <div className="flex flex-col items-center gap-6 text-slate-300">
+                            <div className="w-24 h-24 bg-white/50 rounded-full flex items-center justify-center shadow-inner">
+                              <AlertCircle size={48} strokeWidth={1} className="animate-pulse" />
+                            </div>
+                            <p className="text-2xl font-black italic tracking-tighter opacity-70">Segment contains zero records.</p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -267,5 +257,20 @@ const DataManagementView: React.FC = () => {
     </div>
   );
 };
+
+const ToolAction: React.FC<{ icon: any, title: string, desc: string, onClick: () => void, color: string }> = ({ icon, title, desc, onClick, color }) => (
+  <button onClick={onClick} className="w-full flex items-center p-8 bg-white/40 backdrop-blur-xl rounded-[40px] border border-white/60 hover:bg-white/80 hover:scale-[1.02] hover:shadow-2xl transition-all duration-500 group">
+    <div className={`w-16 h-16 rounded-[28px] bg-white flex items-center justify-center shadow-xl mr-8 ${color} group-hover:scale-110 group-hover:rotate-6 transition-transform duration-700`}>
+      {icon}
+    </div>
+    <div className="text-left flex-1">
+      <h4 className="font-black text-slate-900 text-xl leading-none mb-2 tracking-tight">{title}</h4>
+      <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.3em]">{desc}</p>
+    </div>
+    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-white/50 group-hover:bg-blue-600 group-hover:text-white transition-all duration-500 shadow-sm">
+      <ChevronRight className="opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" size={20} />
+    </div>
+  </button>
+);
 
 export default DataManagementView;

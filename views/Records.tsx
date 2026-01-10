@@ -1,3 +1,4 @@
+
 import React, { useContext, useState, useMemo } from 'react';
 import { AppContext } from '../App';
 import { Plus, Search, Edit2, Trash2, X } from 'lucide-react';
@@ -12,191 +13,89 @@ const RecordsView: React.FC = () => {
   const [isAdding, setIsAdding] = useState(false);
 
   const filteredRecords = useMemo(() => {
-    switch(activeType) {
-      case 'liquid':
-        return data.流动资产记录.filter(r => 
-          String(r.账户昵称 || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-          String(r.市值备注 || '').toLowerCase().includes(searchTerm.toLowerCase())
-        ).sort((a, b) => new Date(b.时间).getTime() - new Date(a.时间).getTime());
-      case 'fixed':
-        return data.固定资产记录.filter(r => 
-          String(r.资产昵称 || '').toLowerCase().includes(searchTerm.toLowerCase())
-        ).sort((a, b) => new Date(b.时间).getTime() - new Date(a.时间).getTime());
-      case 'loan':
-        return data.借入借出记录.filter(r => 
-          String(r.借款对象 || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-          String(r.成员昵称 || '').toLowerCase().includes(searchTerm.toLowerCase())
-        ).sort((a, b) => new Date(b.时间).getTime() - new Date(a.时间).getTime());
-    }
+    let source: any[] = [];
+    if (activeType === 'liquid') source = data.流动资产记录;
+    else if (activeType === 'fixed') source = data.固定资产记录;
+    else source = data.借入借出记录;
+
+    return source.filter(r => 
+      Object.values(r).some(v => String(v || '').toLowerCase().includes(searchTerm.toLowerCase()))
+    ).sort((a, b) => new Date(b.时间).getTime() - new Date(a.时间).getTime());
   }, [data, activeType, searchTerm]);
 
-  const handleDelete = (index: number) => {
-    if (!window.confirm("Are you sure you want to delete this record?")) return;
-    const newData = { ...data };
-    if (activeType === 'liquid') newData.流动资产记录.splice(index, 1);
-    else if (activeType === 'fixed') newData.固定资产记录.splice(index, 1);
-    else if (activeType === 'loan') newData.借入借出记录.splice(index, 1);
-    setData(newData);
-  };
-
-  const renderVal = (val: any) => {
-    if (val === null || val === undefined) return '';
-    if (val instanceof Date) return val.toLocaleDateString();
-    if (typeof val === 'object') return JSON.stringify(val);
-    return String(val);
-  };
-
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="flex bg-white p-1 rounded-lg border border-gray-200">
-          <button 
-            onClick={() => setActiveType('liquid')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeType === 'liquid' ? 'bg-blue-600 text-white shadow' : 'hover:bg-gray-50'}`}
-          >
-            Liquid Assets
-          </button>
-          <button 
-            onClick={() => setActiveType('fixed')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeType === 'fixed' ? 'bg-blue-600 text-white shadow' : 'hover:bg-gray-50'}`}
-          >
-            Fixed Assets
-          </button>
-          <button 
-            onClick={() => setActiveType('loan')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeType === 'loan' ? 'bg-blue-600 text-white shadow' : 'hover:bg-gray-50'}`}
-          >
-            Lend/Borrow
-          </button>
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="flex flex-col xl:flex-row gap-6 items-center justify-between">
+        <div className="flex bg-white/40 backdrop-blur-md p-1.5 rounded-2xl border border-white/60 shadow-sm">
+          {['liquid', 'fixed', 'loan'].map((type) => (
+            <button 
+              key={type}
+              onClick={() => setActiveType(type as any)}
+              className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeType === type ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-800'}`}
+            >
+              {type}
+            </button>
+          ))}
         </div>
 
-        <div className="flex gap-3 w-full md:w-auto">
-          <div className="relative flex-1 md:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+        <div className="flex gap-4 w-full xl:w-auto">
+          <div className="relative flex-1 xl:w-80">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input 
               type="text" 
-              placeholder="Search records..."
+              placeholder="Filter records..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 shadow-sm"
+              className="w-full pl-12 pr-4 py-3 bg-white/40 backdrop-blur-md border border-white/60 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:bg-white transition-all shadow-sm outline-none"
             />
           </div>
-          <button onClick={() => setIsAdding(true)} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 shadow-md">
-            <Plus size={18} /> Add Record
+          <button onClick={() => setIsAdding(true)} className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-2xl hover:bg-black shadow-xl hover:scale-105 transition-all font-bold">
+            <Plus size={20} /> New
           </button>
         </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm">
-        <table className="w-full text-left">
-          <thead className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            {activeType === 'liquid' && (
+      <div className="rounded-[32px] border border-white/60 overflow-hidden bg-white/30 backdrop-blur-xl shadow-xl">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-white/40 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-white/20">
               <tr>
-                <th className="px-6 py-4 border-b">Account</th>
-                <th className="px-6 py-4 border-b">Time</th>
-                <th className="px-6 py-4 border-b text-right">Value (Orig)</th>
-                <th className="px-6 py-4 border-b text-right">Base {renderVal(settings.baseCurrency)}</th>
-                <th className="px-6 py-4 border-b">Remarks</th>
-                <th className="px-6 py-4 border-b text-center">Actions</th>
+                <th className="px-8 py-5">Item</th>
+                <th className="px-8 py-5">Timestamp</th>
+                <th className="px-8 py-5 text-right">Value</th>
+                <th className="px-8 py-5">Notes</th>
+                <th className="px-8 py-5 text-center">Actions</th>
               </tr>
-            )}
-            {activeType === 'fixed' && (
-              <tr>
-                <th className="px-6 py-4 border-b">Asset</th>
-                <th className="px-6 py-4 border-b">Time</th>
-                <th className="px-6 py-4 border-b text-right">Valuation</th>
-                <th className="px-6 py-4 border-b">Remarks</th>
-                <th className="px-6 py-4 border-b text-center">Actions</th>
-              </tr>
-            )}
-            {activeType === 'loan' && (
-              <tr>
-                <th className="px-6 py-4 border-b">Member</th>
-                <th className="px-6 py-4 border-b">Type</th>
-                <th className="px-6 py-4 border-b">Counterparty</th>
-                <th className="px-6 py-4 border-b text-right">Amount</th>
-                <th className="px-6 py-4 border-b">Settled?</th>
-                <th className="px-6 py-4 border-b text-center">Actions</th>
-              </tr>
-            )}
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {filteredRecords.map((record, i) => (
-              <tr key={i} className="hover:bg-gray-50 text-sm transition-colors">
-                {activeType === 'liquid' && (
-                  <>
-                    <td className="px-6 py-4 font-medium">{renderVal((record as any).账户昵称)}</td>
-                    <td className="px-6 py-4 text-gray-500">{renderVal((record as any).时间)}</td>
-                    <td className="px-6 py-4 text-right tabular-nums">
-                      {Number((record as any).市值 || 0).toLocaleString()} {renderVal((record as any).币种)}
-                    </td>
-                    <td className="px-6 py-4 text-right font-semibold text-blue-600">--</td>
-                    <td className="px-6 py-4 text-gray-400 truncate max-w-xs">{renderVal((record as any).市值备注)}</td>
-                  </>
-                )}
-                {activeType === 'fixed' && (
-                  <>
-                    <td className="px-6 py-4 font-medium">{renderVal((record as any).资产昵称)}</td>
-                    <td className="px-6 py-4 text-gray-500">{renderVal((record as any).时间)}</td>
-                    <td className="px-6 py-4 text-right tabular-nums">
-                      {Number((record as any).估值 || 0).toLocaleString()} {renderVal((record as any).币种)}
-                    </td>
-                    <td className="px-6 py-4 text-gray-400 truncate max-w-xs">{renderVal((record as any).估值备注)}</td>
-                  </>
-                )}
-                {activeType === 'loan' && (
-                  <>
-                    <td className="px-6 py-4 font-medium">{renderVal((record as any).成员昵称)}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-0.5 rounded text-xs font-bold ${renderVal((record as any).借入借出) === '借出' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        {renderVal((record as any).借入借出)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">{renderVal((record as any).借款对象)}</td>
-                    <td className="px-6 py-4 text-right tabular-nums">
-                      {Number((record as any).借款额 || 0).toLocaleString()} {renderVal((record as any).币种)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`text-xs font-semibold ${renderVal((record as any).结清) === '是' ? 'text-green-600' : 'text-orange-500'}`}>
-                        {renderVal((record as any).结清) === '是' ? 'Yes' : 'No'}
-                      </span>
-                    </td>
-                  </>
-                )}
-                <td className="px-6 py-4">
-                  <div className="flex justify-center gap-2">
-                    <button className="p-1.5 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Edit"><Edit2 size={16}/></button>
-                    <button onClick={() => handleDelete(i)} className="p-1.5 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Delete"><Trash2 size={16}/></button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {filteredRecords.length === 0 && (
-              <tr>
-                <td colSpan={10} className="px-6 py-12 text-center text-gray-400 italic">
-                  No records found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-white/20 text-sm">
+              {filteredRecords.map((r, i) => (
+                <tr key={i} className="hover:bg-white/50 transition-colors group">
+                  <td className="px-8 py-5 font-bold text-slate-800">{String((r as any).账户昵称 || (r as any).资产昵称 || (r as any).成员昵称)}</td>
+                  <td className="px-8 py-5 text-slate-400 text-xs font-mono">{String((r as any).时间)}</td>
+                  <td className="px-8 py-5 text-right font-black text-indigo-600 tracking-tight">
+                    {Number((r as any).市值 || (r as any).估值 || (r as any).借款额 || 0).toLocaleString()} <span className="text-[10px] text-slate-300 font-normal">{String((r as any).币种)}</span>
+                  </td>
+                  <td className="px-8 py-5 text-slate-500 text-xs truncate max-w-[200px] italic">"{String((r as any).市值备注 || (r as any).估值备注 || (r as any).借款备注 || '-')}"</td>
+                  <td className="px-8 py-5">
+                    <div className="flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button className="p-2 hover:bg-white rounded-xl text-slate-400 hover:text-blue-600 shadow-sm"><Edit2 size={14}/></button>
+                      <button className="p-2 hover:bg-white rounded-xl text-slate-400 hover:text-red-600 shadow-sm"><Trash2 size={14}/></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {isAdding && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
-            <div className="p-6 border-b flex items-center justify-between">
-              <h3 className="text-xl font-bold">Add New Record</h3>
-              <button onClick={() => setIsAdding(false)} className="text-gray-400 hover:text-gray-600"><X size={20}/></button>
-            </div>
-            <div className="p-6 space-y-4 text-center">
-              <div className="bg-blue-50 text-blue-800 p-4 rounded-lg text-sm italic border border-blue-100">
-                Data management is prioritized via Excel synchronization. For bulk additions, update your spreadsheet and use "Data Management" → "Import".
-              </div>
-            </div>
-            <div className="p-6 bg-gray-50 flex justify-end">
-              <button onClick={() => setIsAdding(false)} className="px-6 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 font-bold transition-colors">Close</button>
-            </div>
+        <div className="fixed inset-0 bg-white/20 backdrop-blur-xl flex items-center justify-center p-6 z-[100] animate-in fade-in duration-300">
+          <div className="bg-white/90 glass-card rounded-[40px] shadow-2xl w-full max-w-lg p-10 flex flex-col items-center text-center">
+             <div className="w-20 h-20 bg-blue-100 rounded-[28px] flex items-center justify-center mb-6 text-blue-600"><Plus size={40} /></div>
+             <h3 className="text-2xl font-black mb-4">Add Entry</h3>
+             <p className="text-slate-500 mb-10 text-sm leading-relaxed">For consistent integrity, please use the Excel Import module to sync bulk records. Individual entry creation is coming in v2.1.</p>
+             <button onClick={() => setIsAdding(false)} className="w-full py-4 bg-slate-900 text-white rounded-[24px] font-black tracking-widest uppercase text-xs hover:bg-black transition-all shadow-xl">Understood</button>
           </div>
         </div>
       )}

@@ -1,42 +1,14 @@
+
 import React, { useContext, useMemo } from 'react';
 import { AppContext } from '../App';
-import { 
-  PieChart, 
-  Pie, 
-  Cell,
-  Tooltip,
-  Legend,
-  ResponsiveContainer 
-} from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { TrendingUp, Wallet, Home, Landmark } from 'lucide-react';
-import { LoanRecord } from '../types';
 
 const DashboardView: React.FC = () => {
   const context = useContext(AppContext);
   if (!context) return null;
   const { data, settings } = context;
 
-  // Helper to ensure values are safe for React rendering (no raw Date objects or mismatched symbols)
-  const renderVal = (val: any): string => {
-    if (val === null || val === undefined) return '';
-    if (val instanceof Date) return val.toLocaleDateString();
-    
-    // Check if it's a React element to avoid processing it as a plain object
-    if (val && typeof val === 'object' && '$$typeof' in val) {
-      return '[React Element]';
-    }
-
-    if (typeof val === 'object') {
-      try {
-        return JSON.stringify(val);
-      } catch (e) {
-        return '[Complex Object]';
-      }
-    }
-    return String(val);
-  };
-
-  // 1. Exchange Rate Helper
   const getExchangeRate = (from: string, to: string) => {
     if (from === to) return 1;
     const rates = [...data.汇率].sort((a, b) => new Date(b.时间).getTime() - new Date(a.时间).getTime());
@@ -44,12 +16,9 @@ const DashboardView: React.FC = () => {
     return rate ? rate.汇率 : 1;
   };
 
-  // 2. Snapshot Calculations
   const calculations = useMemo(() => {
     const latestLiquidByAccount = data.账户.map(acc => {
-      const records = data.流动资产记录
-        .filter(r => r.账户ID === acc.账户ID)
-        .sort((a, b) => new Date(b.时间).getTime() - new Date(a.时间).getTime());
+      const records = data.流动资产记录.filter(r => r.账户ID === acc.账户ID).sort((a, b) => new Date(b.时间).getTime() - new Date(a.时间).getTime());
       const latest = records[0];
       const value = latest ? Number(latest.市值) || 0 : 0;
       const currency = latest ? latest.币种 : acc.资产类型; 
@@ -58,128 +27,73 @@ const DashboardView: React.FC = () => {
     });
 
     const latestFixedByAsset = data.固定资产.map(asset => {
-      const records = data.固定资产记录
-        .filter(r => r.资产ID === asset.资产ID)
-        .sort((a, b) => new Date(b.时间).getTime() - new Date(a.时间).getTime());
+      const records = data.固定资产记录.filter(r => r.资产ID === asset.资产ID).sort((a, b) => new Date(b.时间).getTime() - new Date(a.时间).getTime());
       const latest = records[0];
       const value = latest ? Number(latest.估值) || 0 : Number(asset.购入价格) || 0;
       const converted = value * getExchangeRate(asset.币种, settings.baseCurrency);
       return { ...asset, value, converted, member: asset.成员昵称 };
     });
 
-    const latestLoans = data.借入借出记录
-      .filter(l => l.结清 !== '是')
-      .reduce((acc, l) => {
-        const key = `${l.成员ID}-${l.借款对象}-${l.借入借出}`;
-        const existing = acc[key];
-        if (!existing || new Date(l.时间).getTime() > new Date(existing.时间).getTime()) {
-          acc[key] = l;
-        }
-        return acc;
-      }, {} as Record<string, LoanRecord>);
-
-    const loansList: LoanRecord[] = Object.values(latestLoans);
-    const lendingTotal = loansList
-      .filter(l => l.借入借出 === '借出')
-      .reduce((sum, l) => sum + (Number(l.借款额) || 0) * getExchangeRate(l.币种, settings.baseCurrency), 0);
-    const borrowingTotal = loansList
-      .filter(l => l.借入借出 === '借入')
-      .reduce((sum, l) => sum + (Number(l.借款额) || 0) * getExchangeRate(l.币种, settings.baseCurrency), 0);
+    const loansList = data.借入借出记录.filter(l => l.结清 !== '是');
+    const lendingTotal = loansList.filter(l => l.借入借出 === '借出').reduce((sum, l) => sum + (Number(l.借款额) || 0) * getExchangeRate(l.币种, settings.baseCurrency), 0);
+    const borrowingTotal = loansList.filter(l => l.借入借出 === '借入').reduce((sum, l) => sum + (Number(l.借款额) || 0) * getExchangeRate(l.币种, settings.baseCurrency), 0);
 
     const liquidTotal = latestLiquidByAccount.reduce((sum, item) => sum + item.converted, 0);
     const fixedTotal = latestFixedByAsset.reduce((sum, item) => sum + item.converted, 0);
     const netWorth = liquidTotal + fixedTotal + lendingTotal - borrowingTotal;
 
     const memberData = data.成员.map(m => {
-      const m_liquid = latestLiquidByAccount.filter(a => a.成员ID === m.成员ID).reduce((s, i) => s + i.converted, 0);
-      const m_fixed = latestFixedByAsset.filter(a => a.成员ID === m.成员ID).reduce((s, i) => s + i.converted, 0);
-      return { name: renderVal(m.成员昵称), value: m_liquid + m_fixed };
+      const val = latestLiquidByAccount.filter(a => a.成员ID === m.成员ID).reduce((s, i) => s + i.converted, 0) + latestFixedByAsset.filter(a => a.成员ID === m.成员ID).reduce((s, i) => s + i.converted, 0);
+      return { name: String(m.成员昵称), value: val };
     }).filter(m => m.value > 0);
 
     return { netWorth, liquidTotal, fixedTotal, lendingTotal, borrowingTotal, memberData, latestLiquidByAccount };
   }, [data, settings]);
 
-  const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+  const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard 
-          label="Family Net Worth" 
-          value={calculations.netWorth} 
-          currency={settings.baseCurrency} 
-          icon={<TrendingUp className="text-blue-500" />} 
-          color="blue"
-        />
-        <StatCard 
-          label="Liquid Assets" 
-          value={calculations.liquidTotal} 
-          currency={settings.baseCurrency} 
-          icon={<Wallet className="text-emerald-500" />} 
-          color="emerald"
-        />
-        <StatCard 
-          label="Fixed Assets" 
-          value={calculations.fixedTotal} 
-          currency={settings.baseCurrency} 
-          icon={<Home className="text-orange-500" />} 
-          color="orange"
-        />
-        <StatCard 
-          label="Loans (Lend - Borrow)" 
-          value={calculations.lendingTotal - calculations.borrowingTotal} 
-          currency={settings.baseCurrency} 
-          icon={<Landmark className="text-purple-500" />} 
-          color="purple"
-        />
+    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard label="Net Worth" value={calculations.netWorth} currency={settings.baseCurrency} icon={<TrendingUp size={28} />} grad="from-blue-500/20 to-indigo-500/20" text="text-indigo-700" />
+        <StatCard label="Liquid" value={calculations.liquidTotal} currency={settings.baseCurrency} icon={<Wallet size={28} />} grad="from-emerald-500/20 to-teal-500/20" text="text-emerald-700" />
+        <StatCard label="Fixed" value={calculations.fixedTotal} currency={settings.baseCurrency} icon={<Home size={28} />} grad="from-orange-500/20 to-amber-500/20" text="text-amber-700" />
+        <StatCard label="Balance" value={calculations.lendingTotal - calculations.borrowingTotal} currency={settings.baseCurrency} icon={<Landmark size={28} />} grad="from-pink-500/20 to-purple-500/20" text="text-purple-700" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className={`p-6 rounded-xl border ${settings.theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-          <h3 className="text-lg font-semibold mb-4">Member Allocation</h3>
-          <div className="h-64">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="p-8 rounded-[32px] bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg">
+          <h3 className="text-xl font-black mb-6 text-slate-800">Member Split</h3>
+          <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie
-                  data={calculations.memberData}
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {calculations.memberData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
+                <Pie data={calculations.memberData} innerRadius={75} outerRadius={100} paddingAngle={8} dataKey="value" stroke="none">
+                  {calculations.memberData.map((_, index) => <Cell key={index} fill={COLORS[index % COLORS.length]} cornerRadius={8} />)}
                 </Pie>
-                <Tooltip />
-                <Legend verticalAlign="bottom" height={36}/>
+                <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className={`lg:col-span-2 p-6 rounded-xl border ${settings.theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-          <h3 className="text-lg font-semibold mb-4">Account Snapshot</h3>
+        <div className="lg:col-span-2 p-8 rounded-[32px] bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg">
+          <h3 className="text-xl font-black mb-6 text-slate-800">Latest Snapshots</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="border-b border-gray-100 text-sm text-gray-400">
-                  <th className="pb-3 font-medium">Account</th>
-                  <th className="pb-3 font-medium">Member</th>
-                  <th className="pb-3 font-medium text-right">Value (Orig)</th>
-                  <th className="pb-3 font-medium text-right">Value ({settings.baseCurrency})</th>
+                <tr className="border-b border-white/40 text-[10px] uppercase tracking-widest text-slate-400">
+                  <th className="pb-4 px-2">Account</th>
+                  <th className="pb-4 px-2">Member</th>
+                  <th className="pb-4 px-2 text-right">Value (Base)</th>
                 </tr>
               </thead>
               <tbody className="text-sm">
-                {calculations.latestLiquidByAccount.slice(0, 8).map((acc, i) => (
-                  <tr key={i} className="border-b border-gray-50 hover:bg-gray-50/50">
-                    <td className="py-4 font-medium">{renderVal(acc.账户昵称)}</td>
-                    <td className="py-4">{renderVal(acc.member)}</td>
-                    <td className="py-4 text-right tabular-nums">
-                      {acc.value.toLocaleString()} 
-                    </td>
-                    <td className="py-4 text-right font-semibold tabular-nums text-blue-600">
-                      {Math.round(acc.converted).toLocaleString()}
+                {calculations.latestLiquidByAccount.slice(0, 6).map((acc, i) => (
+                  <tr key={i} className="group hover:bg-white/50 transition-colors">
+                    <td className="py-4 px-2 font-bold text-slate-700">{String(acc.账户昵称)}</td>
+                    <td className="py-4 px-2 text-slate-500">{String(acc.member)}</td>
+                    <td className="py-4 px-2 text-right font-black text-blue-600 tracking-tight">
+                      {Math.round(acc.converted).toLocaleString()} {settings.baseCurrency}
                     </td>
                   </tr>
                 ))}
@@ -192,23 +106,24 @@ const DashboardView: React.FC = () => {
   );
 };
 
-const StatCard: React.FC<{ label: string, value: number, currency: string, icon: React.ReactNode, color: string }> = ({ label, value, currency, icon, color }) => {
-  return (
-    <div className="p-6 bg-white rounded-xl border border-gray-200 shadow-sm flex items-start justify-between">
-      <div>
-        <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
-        <div className="flex items-baseline gap-2">
-          <h4 className="text-2xl font-bold tracking-tight">
-            {value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-          </h4>
-          <span className="text-xs font-bold text-gray-400">{currency}</span>
-        </div>
-      </div>
-      <div className={`p-3 rounded-lg bg-slate-50`}>
-        {icon}
-      </div>
+const StatCard: React.FC<{ label: string, value: number, currency: string, icon: React.ReactNode, grad: string, text: string }> = ({ label, value, currency, icon, grad, text }) => (
+  <div className={`p-7 bg-white/40 backdrop-blur-lg border border-white/60 rounded-[32px] shadow-sm relative overflow-hidden group hover:scale-[1.03] transition-transform duration-500`}>
+    <div className={`absolute -right-4 -top-4 w-24 h-24 bg-gradient-to-br ${grad} rounded-full blur-2xl opacity-50 group-hover:scale-150 transition-transform duration-700`}></div>
+    <div className="relative z-10 flex flex-col gap-4">
+       <div className={`w-12 h-12 rounded-2xl flex items-center justify-center bg-white shadow-sm ${text}`}>
+         {icon}
+       </div>
+       <div>
+         <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">{label}</p>
+         <div className="flex items-baseline gap-2">
+           <h4 className="text-3xl font-black text-slate-800 tracking-tighter">
+             {value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+           </h4>
+           <span className="text-[10px] font-black text-slate-400">{currency}</span>
+         </div>
+       </div>
     </div>
-  );
-};
+  </div>
+);
 
 export default DashboardView;
