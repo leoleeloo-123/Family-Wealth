@@ -104,56 +104,53 @@ const DashboardView: React.FC = () => {
   const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       
-      {/* Top Controls: Two Distinct Cards */}
-      <div className="flex flex-col xl:flex-row items-stretch gap-6">
-        {/* Card 1: Squashed FX Intelligence Bar with Dropdown */}
-        <div className="flex-1 rounded-[28px] py-4 px-6 bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg hover:shadow-2xl transition-all duration-500 flex items-center gap-8">
-          <div className="flex items-center gap-3 bg-blue-600/10 px-4 py-2 rounded-2xl text-blue-600 border border-blue-600/20 shadow-inner group/curr">
-            <Globe size={18} strokeWidth={2.5} />
+      {/* Top Controls: Enhanced Dynamism */}
+      <div className="flex flex-col xl:flex-row items-stretch gap-4 sm:gap-6">
+        {/* Card 1: Currency & FX Bar */}
+        <div className="flex-1 rounded-[24px] sm:rounded-[28px] py-3 sm:py-4 px-4 sm:px-6 bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg hover:shadow-2xl transition-all duration-500 flex items-center gap-4 sm:gap-8 min-h-[64px] sm:min-h-[80px]">
+          <div className="flex items-center gap-2 sm:gap-3 bg-blue-600/10 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-blue-600 border border-blue-600/20 shadow-inner group/curr flex-shrink-0">
+            <Globe size={16} sm:size={18} strokeWidth={2.5} />
             <select 
               value={displayCurrency}
               onChange={(e) => setDisplayCurrency(e.target.value)}
-              className="bg-transparent border-none outline-none font-black text-sm tracking-widest cursor-pointer appearance-none pr-1"
+              className="bg-transparent border-none outline-none font-black text-xs sm:text-sm tracking-widest cursor-pointer appearance-none pr-1"
             >
               {availableCurrencies.map(curr => <option key={curr} value={curr}>{curr}</option>)}
             </select>
           </div>
 
-          <div className="flex-1 flex items-center gap-4 overflow-x-auto custom-scrollbar no-scrollbar scroll-smooth">
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 mr-2 flex-shrink-0">
-              <ArrowRightLeft size={14} />
+          <div className="flex-1 flex items-center gap-3 sm:gap-4 overflow-x-auto custom-scrollbar no-scrollbar scroll-smooth">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400 mr-1 sm:mr-2 flex-shrink-0">
+              <ArrowRightLeft size={12} sm:size={14} />
               <span>FX:</span>
             </div>
             {availableCurrencies.filter(c => c !== displayCurrency).map(curr => {
               const rate = exchangeRatesMap[curr];
               return (
-                <div key={curr} className="flex items-center gap-2 bg-white/60 px-3 py-1.5 rounded-xl border border-white/80 flex-shrink-0 shadow-sm">
-                  <span className="text-[10px] font-black text-slate-400">{curr}</span>
-                  <span className="text-xs font-black text-slate-700">
+                <div key={curr} className="flex items-center gap-1.5 sm:gap-2 bg-white/60 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl border border-white/80 flex-shrink-0 shadow-sm">
+                  <span className="text-[8px] sm:text-[10px] font-black text-slate-400">{curr}</span>
+                  <span className="text-[10px] sm:text-xs font-black text-slate-700">
                     {rate > 0 ? rate.toFixed(3) : '--'}
                   </span>
                 </div>
               );
             })}
-            {availableCurrencies.length <= 1 && (
-               <span className="text-[10px] text-slate-400 font-medium italic">No other rates tracked</span>
-            )}
           </div>
         </div>
 
-        {/* Card 2: Separated Member Filter Card */}
-        <div className="rounded-[28px] py-4 px-6 bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg hover:shadow-2xl transition-all duration-500 flex items-center gap-4 min-w-[240px]">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-slate-900/5 text-slate-500">
-            <User size={20} />
+        {/* Card 2: Perspective (Member Filter) - Now Dynamic */}
+        <div className="rounded-[24px] sm:rounded-[28px] py-3 sm:py-4 px-4 sm:px-6 bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg hover:shadow-2xl transition-all duration-500 flex items-center gap-3 sm:gap-4 xl:min-w-[240px]">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center bg-slate-900/5 text-slate-500 flex-shrink-0">
+            <User size={16} sm:size={20} />
           </div>
-          <div className="flex-1">
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5 leading-none">Perspective</p>
+          <div className="flex-1 min-w-0">
+            <p className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5 leading-none">Perspective</p>
             <select 
               value={selectedMemberId}
               onChange={(e) => setSelectedMemberId(e.target.value)}
-              className="w-full bg-transparent border-none outline-none font-black text-slate-800 text-sm py-0 pr-4 appearance-none cursor-pointer"
+              className="w-full bg-transparent border-none outline-none font-black text-slate-800 text-xs sm:text-sm py-0 pr-4 appearance-none cursor-pointer truncate"
             >
               <option value="all">{settings.language === 'en' ? 'All Members' : '全体成员'}</option>
               {data.成员.map(m => (
@@ -165,21 +162,21 @@ const DashboardView: React.FC = () => {
       </div>
 
       {/* Main Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard label={settings.language === 'en' ? "Net Worth" : "净资产"} value={calculations.netWorth} currency={displayCurrency} icon={<TrendingUp size={28} />} grad="from-blue-500/20 to-indigo-500/10" text="text-indigo-600" />
-        <StatCard label={settings.language === 'en' ? "Liquid" : "流动资产"} value={calculations.liquidTotal} currency={displayCurrency} icon={<Wallet size={28} />} grad="from-emerald-500/20 to-teal-500/10" text="text-emerald-600" />
-        <StatCard label={settings.language === 'en' ? "Fixed" : "固定资产"} value={calculations.fixedTotal} currency={displayCurrency} icon={<Home size={28} />} grad="from-orange-500/20 to-amber-500/10" text="text-amber-600" />
-        <StatCard label={settings.language === 'en' ? "Balance" : "待清结算"} value={calculations.lendingTotal - calculations.borrowingTotal} currency={displayCurrency} icon={<Landmark size={28} />} grad="from-pink-500/20 to-purple-500/10" text="text-purple-600" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
+        <StatCard label={settings.language === 'en' ? "Net Worth" : "净资产"} value={calculations.netWorth} currency={displayCurrency} icon={<TrendingUp size={24} />} grad="from-blue-500/20 to-indigo-500/10" text="text-indigo-600" />
+        <StatCard label={settings.language === 'en' ? "Liquid" : "流动资产"} value={calculations.liquidTotal} currency={displayCurrency} icon={<Wallet size={24} />} grad="from-emerald-500/20 to-teal-500/10" text="text-emerald-600" />
+        <StatCard label={settings.language === 'en' ? "Fixed" : "固定资产"} value={calculations.fixedTotal} currency={displayCurrency} icon={<Home size={24} />} grad="from-orange-500/20 to-amber-500/10" text="text-amber-600" />
+        <StatCard label={settings.language === 'en' ? "Balance" : "待清结算"} value={calculations.lendingTotal - calculations.borrowingTotal} currency={displayCurrency} icon={<Landmark size={24} />} grad="from-pink-500/20 to-purple-500/10" text="text-purple-600" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
         {/* Pie Chart Card */}
-        <div className="p-8 rounded-[32px] bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg hover:shadow-2xl transition-all duration-500">
-          <h3 className="text-2xl font-black mb-6 text-slate-800">{settings.language === 'en' ? 'Member Split' : '成员资产分布'}</h3>
-          <div className="h-72">
+        <div className="p-6 sm:p-8 rounded-[28px] sm:rounded-[32px] bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg hover:shadow-2xl transition-all duration-500">
+          <h3 className="text-lg sm:text-xl md:text-2xl font-black mb-4 sm:mb-6 text-slate-800 tracking-tight">{settings.language === 'en' ? 'Member Split' : '成员资产分布'}</h3>
+          <div className="h-64 sm:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={calculations.memberData} innerRadius={75} outerRadius={100} paddingAngle={8} dataKey="value" stroke="none">
+                <Pie data={calculations.memberData} innerRadius={70} outerRadius={90} paddingAngle={8} dataKey="value" stroke="none">
                   {calculations.memberData.map((_, index) => <Cell key={index} fill={COLORS[index % COLORS.length]} cornerRadius={8} />)}
                 </Pie>
                 <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
@@ -189,23 +186,23 @@ const DashboardView: React.FC = () => {
         </div>
 
         {/* Data Table Card */}
-        <div className="lg:col-span-2 p-8 rounded-[32px] bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg hover:shadow-2xl transition-all duration-500">
-          <h3 className="text-2xl font-black mb-6 text-slate-800">{settings.language === 'en' ? 'Latest Snapshots' : '资产快照列表'}</h3>
+        <div className="lg:col-span-2 p-6 sm:p-8 rounded-[28px] sm:rounded-[32px] bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden">
+          <h3 className="text-lg sm:text-xl md:text-2xl font-black mb-4 sm:mb-6 text-slate-800 tracking-tight">{settings.language === 'en' ? 'Latest Snapshots' : '资产快照列表'}</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-separate border-spacing-y-2">
               <thead>
-                <tr className="text-[10px] uppercase tracking-widest text-slate-400">
-                  <th className="pb-4 px-4">{settings.language === 'en' ? 'Account' : '账户'}</th>
-                  <th className="pb-4 px-4">{settings.language === 'en' ? 'Member' : '所属成员'}</th>
-                  <th className="pb-4 px-4 text-right">{settings.language === 'en' ? 'Value (Base)' : '折算市值'}</th>
+                <tr className="text-[9px] sm:text-[10px] uppercase tracking-widest text-slate-400">
+                  <th className="pb-3 sm:pb-4 px-3 sm:px-4">{settings.language === 'en' ? 'Account' : '账户'}</th>
+                  <th className="pb-3 sm:pb-4 px-3 sm:px-4">{settings.language === 'en' ? 'Member' : '所属成员'}</th>
+                  <th className="pb-3 sm:pb-4 px-3 sm:px-4 text-right">{settings.language === 'en' ? 'Value (Base)' : '折算市值'}</th>
                 </tr>
               </thead>
-              <tbody className="text-sm">
+              <tbody className="text-xs sm:text-sm">
                 {calculations.latestLiquidByAccount.slice(0, 10).map((acc, i) => (
-                  <tr key={i} className="group/row hover:bg-white/50 transition-colors bg-white/20 rounded-2xl">
-                    <td className="py-4 px-4 font-bold text-slate-700 rounded-l-2xl">{String(acc.账户昵称)}</td>
-                    <td className="py-4 px-4 text-slate-500">{String(acc.member)}</td>
-                    <td className="py-4 px-4 text-right font-black text-blue-600 tracking-tight rounded-r-2xl">
+                  <tr key={i} className="group/row hover:bg-white/50 transition-colors bg-white/20 rounded-xl sm:rounded-2xl">
+                    <td className="py-3 sm:py-4 px-3 sm:px-4 font-bold text-slate-700 rounded-l-xl sm:rounded-l-2xl whitespace-nowrap">{String(acc.账户昵称)}</td>
+                    <td className="py-3 sm:py-4 px-3 sm:px-4 text-slate-500 whitespace-nowrap">{String(acc.member)}</td>
+                    <td className="py-3 sm:py-4 px-3 sm:px-4 text-right font-black text-blue-600 tracking-tight rounded-r-xl sm:rounded-r-2xl whitespace-nowrap">
                       {Math.round(acc.converted).toLocaleString()} {displayCurrency}
                     </td>
                   </tr>
@@ -220,23 +217,23 @@ const DashboardView: React.FC = () => {
 };
 
 const StatCard: React.FC<{ label: string, value: number, currency: string, icon: React.ReactNode, grad: string, text: string }> = ({ label, value, currency, icon, grad, text }) => (
-  <div className={`p-8 bg-white/40 backdrop-blur-xl border border-white/60 rounded-[32px] shadow-lg relative overflow-hidden hover:shadow-2xl transition-all duration-500 min-h-[170px] flex flex-col justify-center`}>
-    <div className={`absolute -right-4 -top-4 w-28 h-28 bg-gradient-to-br ${grad} rounded-full blur-3xl opacity-60`}></div>
+  <div className={`p-5 sm:p-6 lg:p-8 bg-white/40 backdrop-blur-xl border border-white/60 rounded-[24px] sm:rounded-[32px] shadow-lg relative overflow-hidden hover:shadow-2xl transition-all duration-500 min-h-[140px] sm:min-h-[160px] flex flex-col justify-center`}>
+    <div className={`absolute -right-4 -top-4 w-24 sm:w-28 h-24 sm:h-28 bg-gradient-to-br ${grad} rounded-full blur-3xl opacity-60`}></div>
     
-    <div className="relative z-10 flex flex-col gap-6">
-       <div className="flex items-center gap-4">
-          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center bg-white shadow-md shadow-slate-200/50 ${text} transition-all group-hover:rotate-12`}>
+    <div className="relative z-10 flex flex-col gap-3 sm:gap-4 lg:gap-6 overflow-hidden">
+       <div className="flex items-center gap-3 lg:gap-4 overflow-hidden">
+          <div className={`w-9 h-9 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-lg sm:rounded-xl lg:rounded-2xl flex-shrink-0 flex items-center justify-center bg-white shadow-md shadow-slate-200/50 ${text}`}>
             {icon}
           </div>
-          <p className="text-2xl font-black uppercase tracking-tighter text-slate-800 opacity-90 leading-none">{label}</p>
+          <p className="text-base sm:text-lg lg:text-xl xl:text-2xl font-black uppercase tracking-tighter text-slate-800 opacity-90 leading-none truncate">{label}</p>
        </div>
        
-       <div className="pl-1">
-         <div className="flex items-baseline gap-2">
-           <h4 className="text-2xl md:text-4xl font-black text-slate-900 tracking-tighter drop-shadow-sm leading-none">
+       <div className="pl-0.5 sm:pl-1 overflow-hidden">
+         <div className="flex items-baseline gap-1.5 sm:gap-2 overflow-hidden">
+           <h4 className="text-lg sm:text-xl md:text-2xl xl:text-3xl 2xl:text-4xl font-black text-slate-900 tracking-tighter drop-shadow-sm leading-none truncate">
              {value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
            </h4>
-           <span className="text-[11px] font-black text-slate-400 tracking-[0.2em] uppercase">{currency}</span>
+           <span className="text-[9px] lg:text-[11px] font-black text-slate-400 tracking-widest uppercase flex-shrink-0">{currency}</span>
          </div>
        </div>
     </div>

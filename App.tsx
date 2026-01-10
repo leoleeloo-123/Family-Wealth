@@ -49,22 +49,28 @@ const NavItem: React.FC<{
 }> = ({ item, activeTab, setActiveTab, isSidebarOpen }) => (
   <button
     onClick={() => setActiveTab(item.id as any)}
-    className={`w-full flex items-center transition-all duration-300 group mb-3 ${
-      isSidebarOpen ? 'p-4 rounded-2xl' : 'p-0 h-16 w-16 mx-auto rounded-2xl justify-center'
-    } ${
-      activeTab === item.id 
-        ? 'bg-blue-600/90 text-white shadow-xl shadow-blue-500/30 scale-[1.02] backdrop-blur-md' 
-        : 'hover:bg-white/40 text-slate-700 hover:text-slate-900'
+    className={`flex items-center transition-all duration-300 group ${
+      // Desktop Styles
+      'sm:mb-3 ' + 
+      (isSidebarOpen ? 'sm:p-4 sm:rounded-2xl sm:w-full' : 'sm:p-0 sm:h-16 sm:w-16 sm:mx-auto sm:rounded-2xl sm:justify-center') +
+      // Mobile Styles
+      ' flex-1 flex-col sm:flex-row justify-center sm:justify-start p-2 rounded-xl ' +
+      // Active Styles
+      (activeTab === item.id 
+        ? 'bg-blue-600/90 text-white shadow-xl shadow-blue-500/30 sm:scale-[1.02] backdrop-blur-md' 
+        : 'hover:bg-white/40 text-slate-700 hover:text-slate-900')
     }`}
   >
     <div className={`transition-transform duration-500 flex-shrink-0 ${activeTab === item.id ? 'rotate-[10deg]' : 'group-hover:scale-110'}`}>
-      {item.icon}
+      {React.cloneElement(item.icon, { size: 20, className: 'sm:w-6 sm:h-6' })}
     </div>
-    {isSidebarOpen && (
-      <span className="ml-5 font-black text-base md:text-lg lg:text-xl tracking-tight whitespace-nowrap transition-all duration-700 overflow-hidden">
-        {item.label}
-      </span>
-    )}
+    
+    {/* Label handling: Always show on mobile (bottom nav) but adaptive on desktop */}
+    <span className={`sm:ml-5 font-black text-[10px] sm:text-base md:text-lg lg:text-xl tracking-tight whitespace-nowrap transition-all duration-700 overflow-hidden text-center sm:text-left ${
+      !isSidebarOpen ? 'sm:hidden' : 'block'
+    }`}>
+      {item.label}
+    </span>
   </button>
 );
 
@@ -106,11 +112,11 @@ const App: React.FC = () => {
   const generateId = useCallback((p: string) => `${p}-${Date.now().toString().slice(-6)}`, []);
 
   const mainMenuItems = [
-    { id: 'Dashboard', label: settings.language === 'en' ? 'Dashboard' : '仪表盘', icon: <LayoutDashboard size={24} strokeWidth={2.5} /> },
-    { id: 'Records', label: settings.language === 'en' ? 'Records' : '历史记录', icon: <History size={24} strokeWidth={2.5} /> },
-    { id: 'MasterData', label: settings.language === 'en' ? 'Master Data' : '基础数据', icon: <Database size={24} strokeWidth={2.5} /> },
-    { id: 'DataManagement', label: settings.language === 'en' ? 'Data Management' : '数据管理', icon: <FileSpreadsheet size={24} strokeWidth={2.5} /> },
-    { id: 'Settings', label: settings.language === 'en' ? 'Settings' : '系统设置', icon: <SettingsIcon size={24} strokeWidth={2.5} /> },
+    { id: 'Dashboard', label: settings.language === 'en' ? 'Dashboard' : '仪表盘', icon: <LayoutDashboard strokeWidth={2.5} /> },
+    { id: 'Records', label: settings.language === 'en' ? 'Records' : '历史记录', icon: <History strokeWidth={2.5} /> },
+    { id: 'MasterData', label: settings.language === 'en' ? 'Master Data' : '基础数据', icon: <Database strokeWidth={2.5} /> },
+    { id: 'DataManagement', label: settings.language === 'en' ? 'Data Management' : '数据管理', icon: <FileSpreadsheet strokeWidth={2.5} /> },
+    { id: 'Settings', label: settings.language === 'en' ? 'Settings' : '系统设置', icon: <SettingsIcon strokeWidth={2.5} /> },
   ];
 
   const fontSizeStyles = {
@@ -122,12 +128,16 @@ const App: React.FC = () => {
   return (
     <AppContext.Provider value={{ data, setData, settings, setSettings, generateId, setActiveTab }}>
       <div 
-        className="flex h-screen w-full p-4 gap-4 overflow-hidden transition-all duration-500"
+        className="flex flex-col-reverse sm:flex-row h-screen w-full p-2 sm:p-4 gap-2 sm:gap-4 overflow-hidden transition-all duration-500"
         style={{ fontSize: fontSizeStyles }}
       >
-        {/* Glass Sidebar */}
-        <aside className={`${isSidebarOpen ? 'w-80' : 'w-24'} glass-sidebar rounded-[32px] transition-all duration-500 flex flex-col shadow-2xl relative z-30`}>
-          <div className="p-8 flex items-center overflow-hidden">
+        {/* Glass Navigation - Adaptive Sidebar/BottomBar */}
+        <aside className={`${
+          isSidebarOpen ? 'sm:w-80' : 'sm:w-24'
+        } w-full flex-shrink-0 glass-sidebar rounded-[24px] sm:rounded-[32px] transition-all duration-500 flex flex-row sm:flex-col shadow-2xl relative z-30`}>
+          
+          {/* Logo Section - Hidden on mobile bottom nav */}
+          <div className="hidden sm:flex p-8 items-center overflow-hidden">
             <div className={`flex items-center transition-all duration-500 ${isSidebarOpen ? 'gap-4' : 'justify-center w-full'}`}>
               <div className="w-14 h-14 flex-shrink-0 flex items-center justify-center relative">
                 {!useExternalLogo && <BrandLogoSVG />}
@@ -141,26 +151,31 @@ const App: React.FC = () => {
             </div>
           </div>
           
-          <nav className={`flex-1 mt-4 overflow-y-auto ${isSidebarOpen ? 'px-5' : 'px-0'}`}>
+          {/* Nav Links - Horizontal on mobile, Vertical on desktop */}
+          <nav className={`flex-1 flex flex-row sm:flex-col items-center justify-around sm:justify-start sm:mt-4 p-2 sm:p-5 overflow-x-auto no-scrollbar`}>
             {mainMenuItems.map((item) => (
               <NavItem key={item.id} item={item} activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
             ))}
           </nav>
 
-          <button onClick={() => setSidebarOpen(!isSidebarOpen)} className="absolute -right-3 top-20 bg-white/80 backdrop-blur-md border border-white/40 rounded-full p-1 shadow-lg text-slate-400 hover:text-blue-600 transition-colors z-50">
+          {/* Desktop Only Toggle */}
+          <button 
+            onClick={() => setSidebarOpen(!isSidebarOpen)} 
+            className="hidden sm:block absolute -right-3 top-20 bg-white/80 backdrop-blur-md border border-white/40 rounded-full p-1 shadow-lg text-slate-400 hover:text-blue-600 transition-colors z-50"
+          >
             {isSidebarOpen ? <X size={16} /> : <Menu size={16} />}
           </button>
         </aside>
 
         {/* Main Glass Content */}
-        <main className="flex-1 flex flex-col glass-card rounded-[40px] overflow-hidden relative z-20">
-          <header className="h-28 md:h-32 flex items-center px-12 border-b border-white/20 bg-white/10 flex-shrink-0 transition-all duration-700">
-             <h2 className="text-3xl md:text-5xl lg:text-6xl font-black text-slate-800 tracking-tighter drop-shadow-sm leading-none transition-all duration-700 animate-in fade-in slide-in-from-left-8">
+        <main className="flex-1 flex flex-col glass-card rounded-[24px] sm:rounded-[40px] overflow-hidden relative z-20">
+          <header className="h-20 sm:h-32 flex items-center px-6 sm:px-12 border-b border-white/20 bg-white/10 flex-shrink-0 transition-all duration-700">
+             <h2 className="text-2xl sm:text-5xl lg:text-6xl font-black text-slate-800 tracking-tighter drop-shadow-sm leading-none transition-all duration-700 animate-in fade-in slide-in-from-left-8">
                {mainMenuItems.find(m => m.id === activeTab)?.label}
              </h2>
           </header>
           
-          <div className="flex-1 overflow-auto p-12 custom-scrollbar">
+          <div className="flex-1 overflow-auto p-4 sm:p-12 custom-scrollbar">
             {activeTab === 'Dashboard' && <DashboardView />}
             {activeTab === 'Records' && <RecordsView />}
             {activeTab === 'MasterData' && <MasterDataView />}
