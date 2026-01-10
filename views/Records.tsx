@@ -161,7 +161,7 @@ const RecordsView: React.FC = () => {
     <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       
       <div className="flex flex-col gap-4">
-        {/* Row 1: Filters */}
+        {/* Row 1: Filters (Category, View, Member, Account) */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           
           <div className="p-4 rounded-[28px] bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg flex flex-col lg:flex-row lg:items-center justify-between gap-3 overflow-hidden">
@@ -196,7 +196,7 @@ const RecordsView: React.FC = () => {
              <div className="w-9 h-9 rounded-xl bg-emerald-600/10 text-emerald-600 flex items-center justify-center flex-shrink-0"><User size={18} /></div>
              <div className="flex-1 min-w-0 flex items-center justify-between">
                <span className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest leading-none flex-shrink-0 mr-4">{isZh ? '成员' : 'MEMBER'}</span>
-               <select value={selectedMember} onChange={(e) => setSelectedMember(e.target.value)} className="flex-1 bg-transparent border-none outline-none font-black text-slate-800 text-xs sm:text-sm md:text-base appearance-none cursor-pointer truncate text-right pr-2">
+               <select value={selectedMember} onChange={(e) => setSelectedMember(e.target.value)} className="flex-1 bg-transparent border-none outline-none font-black text-slate-800 text-sm sm:text-base md:text-lg appearance-none cursor-pointer truncate text-right pr-2">
                  <option value="all">{isZh ? '全部成员' : 'All Members'}</option>
                  {filterOptions.members.map(m => <option key={m} value={m}>{m}</option>)}
                </select>
@@ -209,7 +209,7 @@ const RecordsView: React.FC = () => {
                <span className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest leading-none flex-shrink-0 mr-4">
                 {activeType === 'liquid' ? (isZh ? '账户' : 'ACCOUNT') : activeType === 'fixed' ? (isZh ? '资产' : 'ASSET') : (isZh ? '对象' : 'LENDER')}
                </span>
-               <select value={selectedAccount} onChange={(e) => setSelectedAccount(e.target.value)} className="flex-1 bg-transparent border-none outline-none font-black text-slate-800 text-xs sm:text-sm md:text-base appearance-none cursor-pointer truncate text-right pr-2">
+               <select value={selectedAccount} onChange={(e) => setSelectedAccount(e.target.value)} className="flex-1 bg-transparent border-none outline-none font-black text-slate-800 text-sm sm:text-base md:text-lg appearance-none cursor-pointer truncate text-right pr-2">
                  <option value="all">{isZh ? '全部项' : 'All Items'}</option>
                  {filterOptions.accounts.map(a => <option key={a} value={a}>{a}</option>)}
                </select>
@@ -218,32 +218,32 @@ const RecordsView: React.FC = () => {
         </div>
 
         {/* Row 2: Asset Type, Dates, Buttons */}
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
-          <div className="p-4 rounded-[28px] bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg flex items-center gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-4">
+          <div className="xl:col-span-3 p-4 rounded-[28px] bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg flex items-center gap-4">
              <div className="w-9 h-9 rounded-xl bg-purple-600/10 text-purple-600 flex items-center justify-center flex-shrink-0"><LayoutList size={18} /></div>
              <div className="flex-1 min-w-0 flex items-center justify-between">
                <span className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest leading-none flex-shrink-0 mr-4">{isZh ? '资产类型' : 'ASSET TYPE'}</span>
-               <select value={selectedAssetType} onChange={(e) => setSelectedAssetType(e.target.value)} className="flex-1 bg-transparent border-none outline-none font-black text-slate-800 text-xs sm:text-sm md:text-base appearance-none cursor-pointer truncate text-right pr-2">
+               <select value={selectedAssetType} onChange={(e) => setSelectedAssetType(e.target.value)} className="flex-1 bg-transparent border-none outline-none font-black text-slate-800 text-sm sm:text-base md:text-lg appearance-none cursor-pointer truncate text-right pr-2">
                  <option value="all">{isZh ? '全部类型' : 'All Types'}</option>
                  {filterOptions.assetTypes.map(t => <option key={t} value={t}>{t}</option>)}
                </select>
              </div>
           </div>
 
-          <div className="p-4 rounded-[28px] bg-white/40 border-white/60 backdrop-blur-xl flex items-center gap-4 px-6 shadow-lg">
+          <div className="xl:col-span-5 p-4 rounded-[28px] bg-white/40 border-white/60 backdrop-blur-xl flex items-center gap-4 px-6 shadow-lg overflow-hidden">
             <Calendar size={18} className="text-slate-400 flex-shrink-0" />
-            <div className="flex flex-1 items-center gap-2">
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="bg-transparent outline-none font-black text-slate-800 text-sm md:text-base flex-1 cursor-pointer" />
+            <div className="flex flex-1 items-center gap-2 overflow-hidden">
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="bg-transparent outline-none font-black text-slate-800 text-sm sm:text-base md:text-lg flex-1 cursor-pointer min-w-0" />
               <ArrowRight size={14} className="text-slate-300 flex-shrink-0" />
-              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="bg-transparent outline-none font-black text-slate-800 text-sm md:text-base flex-1 cursor-pointer" />
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="bg-transparent outline-none font-black text-slate-800 text-sm sm:text-base md:text-lg flex-1 cursor-pointer min-w-0" />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <button onClick={() => setIsAdding(true)} className="bg-slate-900 text-white rounded-[28px] h-full font-black uppercase tracking-widest text-[10px] md:text-[11px] flex items-center justify-center gap-3 hover:bg-black transition-all shadow-xl">
+          <div className="xl:col-span-4 flex gap-4 h-full">
+            <button onClick={() => setIsAdding(true)} className="flex-1 bg-slate-900 text-white rounded-[28px] font-black uppercase tracking-widest text-[10px] md:text-[11px] flex items-center justify-center gap-3 hover:bg-black transition-all shadow-xl">
               <Plus size={18} strokeWidth={3} /> {isZh ? '新增记录' : 'NEW ENTRY'}
             </button>
-            <button onClick={handleReset} className="bg-white/60 text-slate-600 rounded-[28px] h-full font-black uppercase tracking-widest text-[10px] md:text-[11px] flex items-center justify-center gap-3 hover:bg-slate-100 transition-all shadow-lg border border-white/60">
+            <button onClick={handleReset} className="px-6 bg-white/60 text-slate-600 rounded-[28px] font-black uppercase tracking-widest text-[10px] md:text-[11px] flex items-center justify-center gap-3 hover:bg-slate-100 transition-all shadow-lg border border-white/60">
               <RotateCcw size={18} strokeWidth={3} /> {isZh ? '重置' : 'RESET'}
             </button>
           </div>
@@ -255,7 +255,7 @@ const RecordsView: React.FC = () => {
           <table className="w-full text-left border-separate border-spacing-0">
             <thead>
               <tr className="bg-white/40 text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] border-b border-white/20">
-                <th className="px-12 py-8 min-w-[200px]">{isZh ? '项目名称' : 'ITEM NAME'}</th>
+                <th className="px-12 py-8 min-w-[220px]">{isZh ? '项目名称' : 'ITEM NAME'}</th>
                 <th className="px-12 py-8 min-w-[150px]">{isZh ? '资产类型' : 'ASSET TYPE'}</th>
                 <th className="px-12 py-8 min-w-[150px]">{isZh ? '记录时间' : 'TIMESTAMP'}</th>
                 <th className="px-12 py-8 text-right min-w-[180px]">{isZh ? '数值 (折合)' : 'SIGNED VALUE'}</th>
