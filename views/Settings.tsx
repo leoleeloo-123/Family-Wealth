@@ -1,17 +1,17 @@
 
-import React, { useContext, useMemo } from 'react';
+import React, { useContext } from 'react';
 import { AppContext } from '../App';
-import { Type, Globe, Clock, ShieldAlert, Languages, Check, Trash2, ShieldCheck, TrendingUp } from 'lucide-react';
+import { Type, Clock, ShieldAlert, Languages, Check, Trash2, ShieldCheck } from 'lucide-react';
 
 const SettingsView: React.FC = () => {
   const context = useContext(AppContext);
   if (!context) return null;
-  const { settings, setSettings, setData, data } = context;
+  const { settings, setSettings, setData } = context;
 
   const handleClearData = () => {
     const msg = settings.language === 'en' 
       ? "CRITICAL: This will wipe all current data in the application. Ensure you have an Excel backup. Continue?"
-      : "致命警告：这将清空应用程序中的所有当前数据。请确保您已备份 Excel 文件。是否继续？";
+      : "致命警告：这将清空应用程序中的所有当前 data。请确保您已备份 Excel 文件。是否继续？";
     
     if (window.confirm(msg)) {
       setData({
@@ -23,82 +23,8 @@ const SettingsView: React.FC = () => {
     }
   };
 
-  // 1. Available Currencies: Strictly only those present in the Exchange Rate table
-  const availableCurrencies = useMemo(() => {
-    const currencies = new Set<string>();
-    data.汇率.forEach(rate => {
-      if (rate.基准币种) currencies.add(rate.基准币种);
-      if (rate.报价币种) currencies.add(rate.报价币种);
-    });
-    
-    if (currencies.size === 0 && settings.baseCurrency) {
-      currencies.add(settings.baseCurrency);
-    }
-    
-    return Array.from(currencies).sort();
-  }, [data.汇率, settings.baseCurrency]);
-
-  // 2. Automated Exchange Rate Calculation
-  // We compute factor R such that: 1 unit of Base = R units of Foreign
-  const exchangeRatesMap = useMemo(() => {
-    const rates: Record<string, number> = {};
-    const base = settings.baseCurrency;
-    
-    rates[base] = 1;
-
-    const sortedRates = [...data.汇率].sort((a, b) => new Date(b.时间).getTime() - new Date(a.时间).getTime());
-
-    const adj: Record<string, Record<string, number>> = {};
-    sortedRates.forEach(r => {
-      const b = r.基准币种;
-      const q = r.报价币种;
-      const val = Number(r.汇率);
-      if (!b || !q || isNaN(val) || val === 0) return;
-      
-      // The user's protocol usually means: 1 Q = val * B
-      // To get 1 B = X * Q, we use X = 1/val
-      if (!adj[b]) adj[b] = {};
-      adj[b][q] = 1 / val;
-      
-      if (!adj[q]) adj[q] = {};
-      adj[q][b] = val;
-    });
-
-    availableCurrencies.forEach(curr => {
-      if (curr === base) return;
-      
-      const visited = new Set<string>();
-      const queue: Array<{ node: string; factor: number }> = [{ node: base, factor: 1 }];
-      visited.add(base);
-
-      while (queue.length > 0) {
-        const { node, factor } = queue.shift()!;
-        if (node === curr) {
-          rates[curr] = factor;
-          return;
-        }
-
-        if (adj[node]) {
-          for (const [neighbor, edgeRate] of Object.entries(adj[node])) {
-            if (!visited.has(neighbor)) {
-              visited.add(neighbor);
-              queue.push({ node: neighbor, factor: factor * edgeRate });
-            }
-          }
-        }
-      }
-      
-      rates[curr] = 0;
-    });
-
-    return rates;
-  }, [data.汇率, settings.baseCurrency, availableCurrencies]);
-
   const t = {
     preferences: settings.language === 'en' ? 'System Preferences' : '系统偏好',
-    currencyVault: settings.language === 'en' ? 'Currency & FX Intelligence' : '本位币与汇率情报',
-    currency: settings.language === 'en' ? 'Base Currency' : '系统基准币种',
-    fxRates: settings.language === 'en' ? 'Active Exchange Rates' : '实时生效汇率',
     fontSize: settings.language === 'en' ? 'Font Size' : '字体大小',
     dateFormat: settings.language === 'en' ? 'Date Format' : '日期格式',
     language: settings.language === 'en' ? 'Interface Language' : '系统语言',
@@ -109,69 +35,12 @@ const SettingsView: React.FC = () => {
     resetBtn: settings.language === 'en' ? 'Reset Local Database' : '清空本地数据库',
     footer: settings.language === 'en' 
       ? 'Family Asset Management System • Local Browser Sandbox'
-      : '家庭资产管理系统 • 本地浏览器沙盒实例',
-    noRate: settings.language === 'en' ? 'No path in FX table' : '汇率表中无路径',
-    rateDesc: settings.language === 'en' ? 'Currencies strictly limited to FX source data' : '币种选择仅限于汇率表中存在的记录'
+      : '家庭资产管理系统 • 本地浏览器沙盒实例'
   };
 
   return (
     <div className="max-w-6xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-1000 pb-20">
       
-      <section className="glass-card rounded-[48px] p-10 bg-gradient-to-br from-blue-600/10 to-indigo-600/5 border-white/60 shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 blur-[120px] rounded-full -mr-32 -mt-32"></div>
-        
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-10 relative z-10">
-          <div className="flex items-center gap-6">
-            <div className="w-16 h-16 bg-blue-600 rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-blue-500/20">
-              <Globe size={32} />
-            </div>
-            <div>
-              <h3 className="text-3xl font-black text-slate-800 tracking-tight">{t.currencyVault}</h3>
-              <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.4em] mt-1">{t.rateDesc}</p>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-3 min-w-[280px]">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{t.currency}</label>
-            <div className="relative">
-              <select 
-                value={settings.baseCurrency}
-                onChange={(e) => setSettings({...settings, baseCurrency: e.target.value})}
-                className="w-full p-5 bg-white border border-white/60 rounded-[24px] outline-none font-black text-blue-600 shadow-xl shadow-blue-500/5 appearance-none cursor-pointer focus:ring-4 focus:ring-blue-500/10 transition-all"
-              >
-                {availableCurrencies.map(curr => <option key={curr} value={curr}>{curr}</option>)}
-              </select>
-              <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-blue-500">
-                <Globe size={18} />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-12 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 relative z-10">
-          {availableCurrencies.filter(c => c !== settings.baseCurrency).map(curr => {
-            const rate = exchangeRatesMap[curr];
-            return (
-              <div key={curr} className="bg-white/50 backdrop-blur-md p-6 rounded-[32px] border border-white/60 flex flex-col gap-2 hover:bg-white/80 transition-all group">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-slate-400 uppercase tracking-widest">{curr}</span>
-                  <TrendingUp size={14} className="text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-xl font-black text-slate-800 tracking-tighter">
-                    {rate > 0 ? rate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '--'}
-                  </span>
-                  <span className="text-[9px] font-black text-slate-400 uppercase">{curr}</span>
-                </div>
-                <p className="text-[9px] font-bold text-slate-400 italic">
-                  {rate > 0 ? `1 ${settings.baseCurrency} = ${rate.toFixed(4)} ${curr}` : t.noRate}
-                </p>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
         <div className="lg:col-span-8">
           <div className="glass-card rounded-[48px] p-12 bg-white/40 backdrop-blur-3xl border-white/60 shadow-2xl relative overflow-hidden">

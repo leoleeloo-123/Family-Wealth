@@ -158,13 +158,6 @@ const App: React.FC = () => {
              <h2 className="text-3xl md:text-5xl lg:text-6xl font-black text-slate-800 tracking-tighter drop-shadow-sm leading-none transition-all duration-700 animate-in fade-in slide-in-from-left-8">
                {mainMenuItems.find(m => m.id === activeTab)?.label}
              </h2>
-             
-             <div className="ml-auto flex items-center gap-4">
-                <div className="flex items-center gap-3 px-5 py-2.5 bg-white/40 border border-white/60 rounded-2xl text-slate-600 shadow-xl backdrop-blur-md">
-                  <Globe size={18} className="text-blue-500" />
-                  <span className="text-sm font-black tracking-[0.2em]">{settings.baseCurrency}</span>
-                </div>
-             </div>
           </header>
           
           <div className="flex-1 overflow-auto p-12 custom-scrollbar">
