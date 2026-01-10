@@ -101,6 +101,7 @@ interface AppContextType {
   settings: AppSettings;
   setSettings: React.Dispatch<React.SetStateAction<AppSettings>>;
   generateId: (prefix: string) => string;
+  setActiveTab: (tab: 'Dashboard' | 'Records' | 'MasterData' | 'DataManagement' | 'Settings') => void;
 }
 
 export const AppContext = createContext<AppContextType | null>(null);
@@ -131,10 +132,11 @@ const App: React.FC = () => {
     { id: 'Records', label: 'Records', icon: <History size={24} strokeWidth={2.5} /> },
     { id: 'MasterData', label: 'Master Data', icon: <Database size={24} strokeWidth={2.5} /> },
     { id: 'DataManagement', label: 'Data Management', icon: <FileSpreadsheet size={24} strokeWidth={2.5} /> },
+    { id: 'Settings', label: 'Settings', icon: <SettingsIcon size={24} strokeWidth={2.5} /> },
   ];
 
   return (
-    <AppContext.Provider value={{ data, setData, settings, setSettings, generateId }}>
+    <AppContext.Provider value={{ data, setData, settings, setSettings, generateId, setActiveTab }}>
       <div className="flex h-screen w-full p-4 gap-4 overflow-hidden">
         {/* Glass Sidebar */}
         <aside className={`${isSidebarOpen ? 'w-80' : 'w-24'} glass-sidebar rounded-[32px] transition-all duration-500 flex flex-col shadow-2xl relative z-30`}>
@@ -158,15 +160,6 @@ const App: React.FC = () => {
             ))}
           </nav>
 
-          <div className={`p-5 mt-auto flex flex-col gap-4 ${!isSidebarOpen ? 'items-center' : ''}`}>
-            <NavItem item={{ id: 'Settings', label: 'Settings', icon: <SettingsIcon size={24} strokeWidth={2.5} /> }} activeTab={activeTab} setActiveTab={setActiveTab} theme={settings.theme} isSidebarOpen={isSidebarOpen} />
-            {isSidebarOpen && (
-              <div className="p-4 rounded-3xl bg-white/30 text-center transition-all">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Protocol v2.0</p>
-              </div>
-            )}
-          </div>
-
           <button onClick={() => setSidebarOpen(!isSidebarOpen)} className="absolute -right-3 top-20 bg-white/80 backdrop-blur-md border border-white/40 rounded-full p-1 shadow-lg text-slate-400 hover:text-blue-600 transition-colors z-50">
             {isSidebarOpen ? <X size={16} /> : <Menu size={16} />}
           </button>
@@ -176,7 +169,7 @@ const App: React.FC = () => {
         <main className="flex-1 flex flex-col glass-card rounded-[40px] overflow-hidden relative z-20">
           <header className="h-20 flex items-center px-12 border-b border-white/20 bg-white/10 flex-shrink-0">
              <h2 className="text-2xl font-black text-slate-800 tracking-tight drop-shadow-sm">
-               {activeTab === 'Settings' ? 'Settings' : mainMenuItems.find(m => m.id === activeTab)?.label}
+               {mainMenuItems.find(m => m.id === activeTab)?.label}
              </h2>
              
              <div className="ml-auto flex items-center gap-4">

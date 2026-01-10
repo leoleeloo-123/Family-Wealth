@@ -9,11 +9,11 @@ import {
   Activity, 
   ShieldCheck, 
   CheckCircle2,
-  Trash2,
   Table as TableIcon,
   AlertCircle,
-  X,
-  Database
+  Database,
+  Settings as SettingsIcon,
+  X
 } from 'lucide-react';
 import { parseExcelFile, exportToExcel } from '../utils/excelHelper';
 import { AppData, TabName } from '../types';
@@ -22,7 +22,7 @@ import { EXCEL_STRUCTURE } from '../constants';
 const DataManagementView: React.FC = () => {
   const context = useContext(AppContext);
   if (!context) return null;
-  const { data: currentData, setData } = context;
+  const { data: currentData, setData, setActiveTab } = context;
 
   const [parsingStatus, setParsingStatus] = useState<'idle' | 'parsing'>('idle');
   const [tempData, setTempData] = useState<AppData | null>(null);
@@ -62,17 +62,16 @@ const DataManagementView: React.FC = () => {
     }
   };
 
-  // Determine which dataset to show in the preview grid
   const previewData = tempData || (isReviewingCurrent ? currentData : null);
   const isIncoming = !!tempData;
 
   return (
     <div className="w-[96%] max-w-[1900px] mx-auto space-y-10 pb-12 animate-in fade-in duration-700">
       
-      {/* Initial Upload & Tools View - Dynamic Spacing */}
+      {/* Initial Upload & Tools View */}
       {!previewData && (
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-10 items-stretch">
-          {/* Upload Area - Expansive */}
+          {/* Upload Area */}
           <div className="xl:col-span-8 glass-card rounded-[56px] p-20 flex flex-col items-center justify-center text-center group border-2 border-dashed border-white/40 hover:border-blue-500/50 transition-all cursor-pointer relative overflow-hidden min-h-[500px]"
                onClick={() => fileInputRef.current?.click()}>
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
@@ -93,21 +92,21 @@ const DataManagementView: React.FC = () => {
             </div>
           </div>
 
-          {/* Tools Area - High Information Density */}
-          <div className="xl:col-span-4 flex flex-col gap-8">
-            <div className="p-10 rounded-[48px] bg-white/40 border border-white/60 backdrop-blur-xl flex items-center gap-8 shadow-sm">
-               <div className="w-20 h-20 bg-blue-600 text-white rounded-[32px] flex items-center justify-center shadow-2xl rotate-3 group-hover:rotate-0 transition-transform"><TableIcon size={32}/></div>
+          {/* Tools Area */}
+          <div className="xl:col-span-4 flex flex-col gap-6">
+            <div className="p-8 rounded-[40px] bg-white/40 border border-white/60 backdrop-blur-xl flex items-center gap-6 shadow-sm">
+               <div className="w-16 h-16 bg-blue-600 text-white rounded-3xl flex items-center justify-center shadow-2xl"><TableIcon size={28}/></div>
                <div>
-                 <h4 className="font-black text-slate-900 text-2xl tracking-tight">Database Vault</h4>
-                 <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.4em] mt-1">Maintenance Protocol</p>
+                 <h4 className="font-black text-slate-900 text-xl tracking-tight">Database Vault</h4>
+                 <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.4em] mt-0.5">Maintenance Protocol</p>
                </div>
             </div>
             
-            <div className="flex-1 space-y-6">
+            <div className="flex-1 space-y-4">
               <ToolAction 
-                icon={<Eye size={24}/>} 
+                icon={<Eye size={20}/>} 
                 title="Review Current Data" 
-                desc="Audit the active local memory records." 
+                desc="Audit the active local records." 
                 onClick={() => {
                   setIsReviewingCurrent(true);
                   setActivePreviewTab('成员');
@@ -115,31 +114,37 @@ const DataManagementView: React.FC = () => {
                 color="text-slate-500" 
               />
               <ToolAction 
-                icon={<Download size={24}/>} 
+                icon={<Download size={20}/>} 
                 title="Export Snapshot" 
-                desc="Generate an .xlsx backup of current state." 
+                desc="Generate an .xlsx backup." 
                 onClick={() => exportToExcel(currentData)} 
                 color="text-emerald-500" 
               />
+              <ToolAction 
+                icon={<SettingsIcon size={20}/>} 
+                title="System Preferences" 
+                desc="Configure UI and local settings." 
+                onClick={() => setActiveTab('Settings')} 
+                color="text-indigo-500" 
+              />
             </div>
 
-            <div className="p-10 rounded-[48px] bg-slate-900/5 border border-white/30 backdrop-blur-md flex flex-col gap-4">
+            <div className="p-8 rounded-[40px] bg-slate-900/5 border border-white/30 backdrop-blur-md flex flex-col gap-3">
                <div className="flex items-center gap-3">
-                 <ShieldCheck className="text-blue-600" size={20}/>
+                 <ShieldCheck className="text-blue-600" size={18}/>
                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-800">Privacy Verification</span>
                </div>
-               <p className="text-xs text-slate-500 leading-relaxed font-bold italic">
-                 "Architecture strictly local. No assets or account details are ever transmitted outside this browser environment."
+               <p className="text-[11px] text-slate-500 leading-relaxed font-bold italic">
+                 "Architecture strictly local. No assets are ever transmitted outside this browser environment."
                </p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Preview View - Dynamic Full-Width Utilization */}
+      {/* Preview View */}
       {previewData && (
         <div className="space-y-8 animate-in slide-in-from-bottom-16 duration-1000">
-          {/* Enhanced Action Bar - Wider & More Dynamic */}
           <div className={`glass-card rounded-[40px] p-8 flex items-center justify-between border-none shadow-3xl relative overflow-hidden transition-all duration-700 ${isIncoming ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white' : 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white'}`}>
             <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
             <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent"></div>
@@ -173,9 +178,7 @@ const DataManagementView: React.FC = () => {
             </div>
           </div>
 
-          {/* Expansive Full-Width Layout */}
           <div className="flex flex-col xl:flex-row gap-8 min-h-[800px]">
-            {/* Sidebar: Optimized for Wide Screens */}
             <div className="w-full xl:w-80 glass-card rounded-[48px] p-8 flex flex-col bg-white/30 backdrop-blur-xl border-white/60">
                <p className="px-6 py-5 text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] border-b border-white/30 mb-6 flex justify-between items-center">
                  Memory Segments
@@ -202,7 +205,6 @@ const DataManagementView: React.FC = () => {
                </div>
             </div>
 
-            {/* Hyper-Expansive Table Area */}
             <div className="flex-1 glass-card rounded-[48px] overflow-hidden flex flex-col bg-white/10 relative border-white/50 shadow-inner">
               <div className="p-10 border-b border-white/20 flex items-center justify-between bg-white/60 backdrop-blur-2xl z-20">
                  <div className="flex items-center gap-8">
@@ -259,16 +261,16 @@ const DataManagementView: React.FC = () => {
 };
 
 const ToolAction: React.FC<{ icon: any, title: string, desc: string, onClick: () => void, color: string }> = ({ icon, title, desc, onClick, color }) => (
-  <button onClick={onClick} className="w-full flex items-center p-8 bg-white/40 backdrop-blur-xl rounded-[40px] border border-white/60 hover:bg-white/80 hover:scale-[1.02] hover:shadow-2xl transition-all duration-500 group">
-    <div className={`w-16 h-16 rounded-[28px] bg-white flex items-center justify-center shadow-xl mr-8 ${color} group-hover:scale-110 group-hover:rotate-6 transition-transform duration-700`}>
+  <button onClick={onClick} className="w-full flex items-center p-6 bg-white/40 backdrop-blur-xl rounded-[32px] border border-white/60 hover:bg-white/80 hover:scale-[1.02] hover:shadow-2xl transition-all duration-500 group">
+    <div className={`w-12 h-12 rounded-[22px] bg-white flex items-center justify-center shadow-xl mr-6 ${color} group-hover:scale-110 transition-transform duration-700`}>
       {icon}
     </div>
     <div className="text-left flex-1">
-      <h4 className="font-black text-slate-900 text-xl leading-none mb-2 tracking-tight">{title}</h4>
-      <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.3em]">{desc}</p>
+      <h4 className="font-black text-slate-900 text-lg leading-none mb-1 tracking-tight">{title}</h4>
+      <p className="text-[9px] text-slate-400 font-black uppercase tracking-[0.3em]">{desc}</p>
     </div>
-    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-white/50 group-hover:bg-blue-600 group-hover:text-white transition-all duration-500 shadow-sm">
-      <ChevronRight className="opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" size={20} />
+    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-white/50 group-hover:bg-blue-600 group-hover:text-white transition-all duration-500 shadow-sm">
+      <ChevronRight className="opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" size={16} />
     </div>
   </button>
 );
