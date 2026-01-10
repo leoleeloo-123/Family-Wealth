@@ -31,6 +31,7 @@ export interface Account {
   成员昵称: string;
   机构ID: string;
   机构名称: string;
+  币种: string;
   账户类型: string;
   资产类型: string;
   风险评估: string;
