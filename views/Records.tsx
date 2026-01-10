@@ -6,7 +6,7 @@ import { Plus, Edit2, Trash2, X, Calendar, Filter, Clock, User, ArrowRight, Rota
 const RecordsView: React.FC = () => {
   const context = useContext(AppContext);
   if (!context) return null;
-  const { data, settings } = context;
+  const { data, setData, settings } = context;
 
   const [activeType, setActiveType] = useState<'liquid' | 'fixed' | 'loan'>('liquid');
   const [viewMode, setViewMode] = useState<'all' | 'latest'>('all');
@@ -81,6 +81,24 @@ const RecordsView: React.FC = () => {
     }
 
     return { assetType, isLiability, signedValue: rawValue };
+  };
+
+  const handleDelete = (record: any) => {
+    const confirmMsg = isZh 
+      ? "确定要永久删除这条记录吗？" 
+      : "Are you sure you want to permanently delete this record?";
+    
+    if (window.confirm(confirmMsg)) {
+      const newData = { ...data };
+      if (activeType === 'liquid') {
+        newData.流动资产记录 = newData.流动资产记录.filter(r => r !== record);
+      } else if (activeType === 'fixed') {
+        newData.固定资产记录 = newData.固定资产记录.filter(r => r !== record);
+      } else {
+        newData.借入借出记录 = newData.借入借出记录.filter(r => r !== record);
+      }
+      setData(newData);
+    }
   };
 
   const filteredRecords = useMemo(() => {
@@ -232,7 +250,7 @@ const RecordsView: React.FC = () => {
 
           <div className="xl:col-span-5 p-4 rounded-[28px] bg-white/40 border-white/60 backdrop-blur-xl flex items-center gap-4 px-6 shadow-lg overflow-hidden">
             <Calendar size={18} className="text-slate-400 flex-shrink-0" />
-            <div className="flex flex-1 items-center gap-2 overflow-hidden">
+            <div className="flex flex-1 items-center gap-2 overflow-hidden min-w-0">
               <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="bg-transparent outline-none font-black text-slate-800 text-sm sm:text-base md:text-lg flex-1 cursor-pointer min-w-0" />
               <ArrowRight size={14} className="text-slate-300 flex-shrink-0" />
               <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="bg-transparent outline-none font-black text-slate-800 text-sm sm:text-base md:text-lg flex-1 cursor-pointer min-w-0" />
@@ -243,7 +261,7 @@ const RecordsView: React.FC = () => {
             <button onClick={() => setIsAdding(true)} className="flex-1 bg-slate-900 text-white rounded-[28px] font-black uppercase tracking-widest text-[10px] md:text-[11px] flex items-center justify-center gap-3 hover:bg-black transition-all shadow-xl">
               <Plus size={18} strokeWidth={3} /> {isZh ? '新增记录' : 'NEW ENTRY'}
             </button>
-            <button onClick={handleReset} className="px-6 bg-white/60 text-slate-600 rounded-[28px] font-black uppercase tracking-widest text-[10px] md:text-[11px] flex items-center justify-center gap-3 hover:bg-slate-100 transition-all shadow-lg border border-white/60">
+            <button onClick={handleReset} className="px-6 bg-rose-500 text-white rounded-[28px] font-black uppercase tracking-widest text-[10px] md:text-[11px] flex items-center justify-center gap-3 hover:bg-rose-600 transition-all shadow-lg border border-rose-400">
               <RotateCcw size={18} strokeWidth={3} /> {isZh ? '重置' : 'RESET'}
             </button>
           </div>
@@ -254,7 +272,7 @@ const RecordsView: React.FC = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-separate border-spacing-0">
             <thead>
-              <tr className="bg-white/40 text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] border-b border-white/20">
+              <tr className="bg-white/40 text-[8px] sm:text-[10px] md:text-xs lg:text-sm font-black text-slate-400 uppercase tracking-[0.2em] md:tracking-[0.3em] border-b border-white/20">
                 <th className="px-12 py-8 min-w-[220px]">{isZh ? '项目名称' : 'ITEM NAME'}</th>
                 <th className="px-12 py-8 min-w-[150px]">{isZh ? '资产类型' : 'ASSET TYPE'}</th>
                 <th className="px-12 py-8 min-w-[150px]">{isZh ? '记录时间' : 'TIMESTAMP'}</th>
@@ -302,8 +320,15 @@ const RecordsView: React.FC = () => {
                     </td>
                     <td className="px-12 py-8">
                       <div className="flex justify-center gap-4 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
-                        <button className="w-10 h-10 bg-white shadow-md rounded-xl flex items-center justify-center text-slate-400 hover:text-blue-600 transition-all hover:scale-110 border border-slate-50"><Edit2 size={16}/></button>
-                        <button className="w-10 h-10 bg-white shadow-md rounded-xl flex items-center justify-center text-slate-400 hover:text-red-600 transition-all hover:scale-110 border border-slate-50"><Trash2 size={16}/></button>
+                        <button className="w-10 h-10 bg-emerald-50 shadow-sm rounded-xl flex items-center justify-center text-emerald-500 hover:bg-emerald-100 transition-all hover:scale-110 border border-emerald-100">
+                          <Edit2 size={16}/>
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(r)}
+                          className="w-10 h-10 bg-rose-50 shadow-sm rounded-xl flex items-center justify-center text-rose-500 hover:bg-rose-100 transition-all hover:scale-110 border border-rose-100"
+                        >
+                          <Trash2 size={16}/>
+                        </button>
                       </div>
                     </td>
                   </tr>
