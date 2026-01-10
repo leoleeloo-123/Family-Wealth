@@ -64,24 +64,24 @@ const DataManagementView: React.FC = () => {
       return;
     }
     
-    if (window.confirm("WARNING: All current data in the application will be OVERWRITTEN. Continue?")) {
-      try {
-        console.log("Committing new data to state...", tempData);
-        
-        // Deep clone to avoid reference issues
-        const dataToSave = JSON.parse(JSON.stringify(tempData));
-        setData(dataToSave);
-        
-        alert("Import Successful! The database has been updated.");
-        
-        // Reset view
-        setReviewMode(null);
-        setTempData(null);
-        setParsingStatus('idle');
-      } catch (err) {
-        console.error("Import execution failed:", err);
-        alert("Import failed during state update: " + err);
-      }
+    // User requested removal of the confirmation pop-up.
+    // Proceeding directly to overwrite.
+    try {
+      console.log("Committing new data to state...", tempData);
+      
+      // Deep clone to avoid reference issues
+      const dataToSave = JSON.parse(JSON.stringify(tempData));
+      setData(dataToSave);
+      
+      alert("Import Successful! The database has been updated.");
+      
+      // Reset view
+      setReviewMode(null);
+      setTempData(null);
+      setParsingStatus('idle');
+    } catch (err) {
+      console.error("Import execution failed:", err);
+      alert("Import failed during state update: " + err);
     }
   };
 
