@@ -127,31 +127,31 @@ const DashboardView: React.FC = () => {
   const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
 
   return (
-    <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="space-y-6 sm:space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
       
-      <div className="flex flex-col xl:flex-row items-stretch gap-4 sm:gap-6">
-        <div className="flex-1 rounded-[24px] py-3 px-6 bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg flex items-center gap-8 min-h-[80px]">
-          <div className="flex items-center gap-3 bg-blue-600/10 px-4 py-2 rounded-2xl text-blue-600 border border-blue-600/20 shadow-inner group/curr flex-shrink-0">
-            <Globe size={18} strokeWidth={2.5} />
-            <select value={displayCurrency} onChange={(e) => setDisplayCurrency(e.target.value)} className="bg-transparent border-none outline-none font-black text-sm tracking-widest cursor-pointer appearance-none">
+      <div className="flex flex-col xl:flex-row items-stretch gap-4 sm:gap-8">
+        <div className="flex-1 rounded-[24px] lg:rounded-[36px] py-4 lg:py-6 px-6 lg:px-10 bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg flex items-center gap-8 min-h-[80px] lg:min-h-[100px]">
+          <div className="flex items-center gap-4 bg-blue-600/10 px-5 lg:px-8 py-3 rounded-2xl lg:rounded-[24px] text-blue-600 border border-blue-600/20 shadow-inner group/curr flex-shrink-0">
+            <Globe size={20} strokeWidth={2.5} className="lg:w-6 lg:h-6" />
+            <select value={displayCurrency} onChange={(e) => setDisplayCurrency(e.target.value)} className="bg-transparent border-none outline-none font-black text-sm lg:text-xl tracking-widest cursor-pointer appearance-none">
               {availableCurrencies.map(curr => <option key={curr} value={curr}>{curr}</option>)}
             </select>
           </div>
-          <div className="flex-1 flex items-center gap-4 overflow-x-auto no-scrollbar">
+          <div className="flex-1 flex items-center gap-4 lg:gap-8 overflow-x-auto no-scrollbar">
             {availableCurrencies.filter(c => c !== displayCurrency).map(curr => (
-              <div key={curr} className="flex items-center gap-2 bg-white/60 px-3 py-1.5 rounded-xl border border-white/80 flex-shrink-0 shadow-sm">
-                <span className="text-[10px] font-black text-slate-400">{curr}</span>
-                <span className="text-xs font-black text-slate-700">{exchangeRatesMap[curr] > 0 ? exchangeRatesMap[curr].toFixed(3) : '--'}</span>
+              <div key={curr} className="flex items-center gap-3 bg-white/60 px-4 py-2 lg:py-3 rounded-xl lg:rounded-2xl border border-white/80 flex-shrink-0 shadow-sm">
+                <span className="text-[10px] lg:text-[14px] font-black text-slate-400">{curr}</span>
+                <span className="text-xs lg:text-lg font-black text-slate-700">{exchangeRatesMap[curr] > 0 ? exchangeRatesMap[curr].toFixed(3) : '--'}</span>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="rounded-[24px] py-3 px-6 bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg flex items-center gap-4 xl:min-w-[240px]">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-slate-900/5 text-slate-500 flex-shrink-0"><User size={20} /></div>
+        <div className="rounded-[24px] lg:rounded-[36px] py-4 lg:py-6 px-6 lg:px-10 bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg flex items-center gap-4 lg:gap-6 xl:min-w-[320px]">
+          <div className="w-10 h-10 lg:w-16 lg:h-16 rounded-xl lg:rounded-[24px] flex items-center justify-center bg-slate-900/5 text-slate-500 flex-shrink-0"><User size={20} className="lg:w-8 lg:h-8" /></div>
           <div className="flex-1 min-w-0">
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5 leading-none">Perspective</p>
-            <select value={selectedMemberId} onChange={(e) => setSelectedMemberId(e.target.value)} className="w-full bg-transparent border-none outline-none font-black text-slate-800 text-sm py-0 pr-4 appearance-none cursor-pointer truncate">
+            <p className="text-[9px] lg:text-[12px] font-black text-slate-400 uppercase tracking-widest mb-1 leading-none">Perspective</p>
+            <select value={selectedMemberId} onChange={(e) => setSelectedMemberId(e.target.value)} className="w-full bg-transparent border-none outline-none font-black text-slate-800 text-sm lg:text-xl py-0 pr-4 appearance-none cursor-pointer truncate">
               <option value="all">{settings.language === 'en' ? 'All Members' : '全体成员'}</option>
               {data.成员.map(m => <option key={m.成员ID} value={m.成员ID}>{m.成员昵称}</option>)}
             </select>
@@ -159,52 +159,52 @@ const DashboardView: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
-        <StatCard label={settings.language === 'en' ? "Net Worth" : "净资产"} value={calculations.netWorth} currency={displayCurrency} icon={<TrendingUp size={24} />} grad="from-blue-500/20 to-indigo-500/10" text="text-indigo-600" />
-        <StatCard label={settings.language === 'en' ? "Liquid" : "流动资产"} value={calculations.liquidTotal} currency={displayCurrency} icon={<Wallet size={24} />} grad="from-emerald-500/20 to-teal-500/10" text="text-emerald-600" />
-        <StatCard label={settings.language === 'en' ? "Fixed" : "固定资产"} value={calculations.fixedTotal} currency={displayCurrency} icon={<Home size={24} />} grad="from-orange-500/20 to-amber-500/10" text="text-amber-600" />
-        <StatCard label={settings.language === 'en' ? "Net Loans" : "债务净额"} value={calculations.loanNet} currency={displayCurrency} icon={<Landmark size={24} />} grad="from-pink-500/20 to-purple-500/10" text="text-purple-600" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 sm:gap-8">
+        <StatCard label={settings.language === 'en' ? "Net Worth" : "净资产"} value={calculations.netWorth} currency={displayCurrency} icon={<TrendingUp size={24} className="lg:w-8 lg:h-8" />} grad="from-blue-500/20 to-indigo-500/10" text="text-indigo-600" />
+        <StatCard label={settings.language === 'en' ? "Liquid" : "流动资产"} value={calculations.liquidTotal} currency={displayCurrency} icon={<Wallet size={24} className="lg:w-8 lg:h-8" />} grad="from-emerald-500/20 to-teal-500/10" text="text-emerald-600" />
+        <StatCard label={settings.language === 'en' ? "Fixed" : "固定资产"} value={calculations.fixedTotal} currency={displayCurrency} icon={<Home size={24} className="lg:w-8 lg:h-8" />} grad="from-orange-500/20 to-amber-500/10" text="text-amber-600" />
+        <StatCard label={settings.language === 'en' ? "Net Loans" : "债务净额"} value={calculations.loanNet} currency={displayCurrency} icon={<Landmark size={24} className="lg:w-8 lg:h-8" />} grad="from-pink-500/20 to-purple-500/10" text="text-purple-600" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="p-8 rounded-[32px] bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg">
-          <h3 className="text-2xl font-black mb-6 text-slate-800 tracking-tight">{settings.language === 'en' ? 'Asset Distribution' : '资产分布'}</h3>
-          <div className="h-72">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 sm:gap-12">
+        <div className="p-8 lg:p-12 rounded-[32px] lg:rounded-[48px] bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg">
+          <h3 className="text-xl lg:text-3xl font-black mb-8 text-slate-800 tracking-tight">{settings.language === 'en' ? 'Asset Distribution' : '资产分布'}</h3>
+          <div className="h-72 lg:h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={calculations.memberData} innerRadius={70} outerRadius={90} paddingAngle={8} dataKey="value" stroke="none">
-                  {calculations.memberData.map((_, index) => <Cell key={index} fill={COLORS[index % COLORS.length]} cornerRadius={8} />)}
+                <Pie data={calculations.memberData} innerRadius={window.innerWidth > 1024 ? 90 : 70} outerRadius={window.innerWidth > 1024 ? 120 : 90} paddingAngle={8} dataKey="value" stroke="none">
+                  {calculations.memberData.map((_, index) => <Cell key={index} fill={COLORS[index % COLORS.length]} cornerRadius={12} />)}
                 </Pie>
-                <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+                <Tooltip contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', padding: '16px', fontWeight: 'bold' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="lg:col-span-2 p-8 rounded-[32px] bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg overflow-hidden">
-          <h3 className="text-2xl font-black mb-6 text-slate-800 tracking-tight">{settings.language === 'en' ? 'Snapshot Highlights' : '核心资产快照'}</h3>
+        <div className="lg:col-span-2 p-8 lg:p-12 rounded-[32px] lg:rounded-[48px] bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg overflow-hidden">
+          <h3 className="text-xl lg:text-3xl font-black mb-8 text-slate-800 tracking-tight">{settings.language === 'en' ? 'Snapshot Highlights' : '核心资产快照'}</h3>
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-separate border-spacing-y-2">
+            <table className="w-full text-left border-separate border-spacing-y-4">
               <thead>
-                <tr className="text-[10px] uppercase tracking-widest text-slate-400">
-                  <th className="pb-4 px-4">{settings.language === 'en' ? 'Account' : '项目'}</th>
-                  <th className="pb-4 px-4">{settings.language === 'en' ? 'Member' : '成员'}</th>
-                  <th className="pb-4 px-4 text-right">{settings.language === 'en' ? 'Valuation' : '折算数值'}</th>
+                <tr className="text-[10px] lg:text-[13px] uppercase tracking-[0.2em] text-slate-400">
+                  <th className="pb-4 px-6">{settings.language === 'en' ? 'Account' : '项目'}</th>
+                  <th className="pb-4 px-6">{settings.language === 'en' ? 'Member' : '成员'}</th>
+                  <th className="pb-4 px-6 text-right">{settings.language === 'en' ? 'Valuation' : '折算数值'}</th>
                 </tr>
               </thead>
-              <tbody className="text-sm">
+              <tbody className="text-sm lg:text-lg">
                 {calculations.snapshots.map((acc, i) => (
-                  <tr key={i} className="bg-white/20 hover:bg-white/50 transition-colors rounded-xl overflow-hidden">
-                    <td className="py-4 px-4 font-bold text-slate-700 rounded-l-2xl whitespace-nowrap">
+                  <tr key={i} className="bg-white/20 hover:bg-white/50 transition-all rounded-[24px] overflow-hidden group">
+                    <td className="py-5 lg:py-7 px-6 font-bold text-slate-700 rounded-l-[24px] whitespace-nowrap">
                       {String(acc.账户昵称)}
-                      <span className="ml-2 text-[9px] font-black uppercase tracking-tighter opacity-30">[{acc.type}]</span>
+                      <span className="ml-3 text-[9px] lg:text-[11px] font-black uppercase tracking-tighter opacity-30 px-2 py-0.5 bg-slate-900/5 rounded-md">[{acc.type}]</span>
                     </td>
-                    <td className="py-4 px-4 text-slate-500 whitespace-nowrap">{String(acc.member)}</td>
-                    <td className="py-4 px-4 text-right rounded-r-2xl whitespace-nowrap">
-                       <span className={`font-black tracking-tight text-base ${(acc as any).isLiability || acc.converted < 0 ? 'text-rose-600' : 'text-blue-600'}`}>
+                    <td className="py-5 lg:py-7 px-6 text-slate-500 whitespace-nowrap">{String(acc.member)}</td>
+                    <td className="py-5 lg:py-7 px-6 text-right rounded-r-[24px] whitespace-nowrap">
+                       <span className={`font-black tracking-tight text-lg lg:text-2xl ${(acc as any).isLiability || acc.converted < 0 ? 'text-rose-600' : 'text-blue-600'}`}>
                          {Math.round(acc.converted).toLocaleString()}
                        </span>
-                       <span className="ml-2 text-[9px] font-black text-slate-400 uppercase tracking-widest">{displayCurrency}</span>
+                       <span className="ml-3 text-[10px] lg:text-[14px] font-black text-slate-400 uppercase tracking-widest">{displayCurrency}</span>
                     </td>
                   </tr>
                 ))}
@@ -218,18 +218,18 @@ const DashboardView: React.FC = () => {
 };
 
 const StatCard: React.FC<{ label: string, value: number, currency: string, icon: React.ReactNode, grad: string, text: string }> = ({ label, value, currency, icon, grad, text }) => (
-  <div className={`p-8 bg-white/40 backdrop-blur-xl border border-white/60 rounded-[32px] shadow-lg relative overflow-hidden flex flex-col justify-center min-h-[160px] group`}>
-    <div className={`absolute -right-4 -top-4 w-28 h-28 bg-gradient-to-br ${grad} rounded-full blur-3xl opacity-60 group-hover:scale-125 transition-transform duration-1000`}></div>
-    <div className="relative z-10 space-y-4">
-       <div className="flex items-center gap-4">
-          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center bg-white shadow-md ${text}`}>{icon}</div>
-          <p className="text-xl font-black uppercase tracking-tighter text-slate-800 opacity-90 leading-none">{label}</p>
+  <div className={`p-8 lg:p-12 bg-white/40 backdrop-blur-xl border border-white/60 rounded-[32px] lg:rounded-[48px] shadow-lg relative overflow-hidden flex flex-col justify-center min-h-[160px] lg:min-h-[220px] group transition-all duration-700`}>
+    <div className={`absolute -right-8 -top-8 w-32 h-32 lg:w-56 lg:h-56 bg-gradient-to-br ${grad} rounded-full blur-3xl opacity-60 group-hover:scale-125 transition-transform duration-1000`}></div>
+    <div className="relative z-10 space-y-5 lg:space-y-8">
+       <div className="flex items-center gap-4 lg:gap-6">
+          <div className={`w-12 h-12 lg:w-16 lg:h-16 rounded-2xl lg:rounded-[24px] flex items-center justify-center bg-white shadow-md ${text}`}>{icon}</div>
+          <p className="text-lg lg:text-2xl font-black uppercase tracking-tighter text-slate-800 opacity-90 leading-none">{label}</p>
        </div>
-       <div className="flex items-baseline gap-2 overflow-hidden">
-         <h4 className={`text-3xl font-black tracking-tighter leading-none ${value < 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+       <div className="flex items-baseline gap-2 lg:gap-4 overflow-hidden">
+         <h4 className={`text-3xl lg:text-5xl font-black tracking-tighter leading-none ${value < 0 ? 'text-rose-600' : 'text-slate-900'}`}>
            {value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
          </h4>
-         <span className="text-[11px] font-black text-slate-400 tracking-widest uppercase">{currency}</span>
+         <span className="text-[11px] lg:text-[16px] font-black text-slate-400 tracking-widest uppercase">{currency}</span>
        </div>
     </div>
   </div>
