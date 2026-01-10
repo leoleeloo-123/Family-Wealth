@@ -1,0 +1,5 @@
+{
+  "name": "Family Asset Management System",
+  "description": "A comprehensive local asset management system using Excel as the primary data contract for tracking net worth, accounts, and historical valuations.",
+  "requestFramePermissions": []
+}
