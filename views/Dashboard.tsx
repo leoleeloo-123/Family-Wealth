@@ -109,7 +109,6 @@ const DashboardView: React.FC = () => {
     const loanNet = loanEntries.reduce((sum, item) => sum + item.converted, 0);
     const netWorth = liquidTotal + fixedTotal + loanNet;
 
-    // Combine for snapshots table
     const snapshots = [...latestLiquidByAccount, ...latestFixedByAsset, ...loanEntries]
       .sort((a, b) => Math.abs(b.converted) - Math.abs(a.converted))
       .slice(0, 12);
@@ -118,7 +117,7 @@ const DashboardView: React.FC = () => {
       const val = [...latestLiquidByAccount, ...latestFixedByAsset, ...loanEntries]
         .filter(a => a.成员ID === m.成员ID || a.member === m.成员昵称)
         .reduce((s, i) => s + i.converted, 0);
-      return { name: String(m.成员昵称), value: Math.max(0, val) }; // Pie charts usually represent positive portions
+      return { name: String(m.成员昵称), value: Math.max(0, val) };
     }).filter(m => m.value > 0);
 
     return { netWorth, liquidTotal, fixedTotal, loanNet, memberData, snapshots };
@@ -128,7 +127,6 @@ const DashboardView: React.FC = () => {
 
   return (
     <div className="space-y-6 sm:space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      
       <div className="flex flex-col xl:flex-row items-stretch gap-4 sm:gap-8">
         <div className="flex-1 rounded-[24px] lg:rounded-[36px] py-4 lg:py-6 px-6 lg:px-10 bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg flex items-center gap-8 min-h-[80px] lg:min-h-[100px]">
           <div className="flex items-center gap-4 bg-blue-600/10 px-5 lg:px-8 py-3 rounded-2xl lg:rounded-[24px] text-blue-600 border border-blue-600/20 shadow-inner group/curr flex-shrink-0">
@@ -160,10 +158,10 @@ const DashboardView: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 sm:gap-8">
-        <StatCard label={settings.language === 'en' ? "Net Worth" : "净资产"} value={calculations.netWorth} currency={displayCurrency} icon={<TrendingUp size={24} className="lg:w-8 lg:h-8" />} grad="from-blue-500/20 to-indigo-500/10" text="text-indigo-600" />
-        <StatCard label={settings.language === 'en' ? "Liquid" : "流动资产"} value={calculations.liquidTotal} currency={displayCurrency} icon={<Wallet size={24} className="lg:w-8 lg:h-8" />} grad="from-emerald-500/20 to-teal-500/10" text="text-emerald-600" />
-        <StatCard label={settings.language === 'en' ? "Fixed" : "固定资产"} value={calculations.fixedTotal} currency={displayCurrency} icon={<Home size={24} className="lg:w-8 lg:h-8" />} grad="from-orange-500/20 to-amber-500/10" text="text-amber-600" />
-        <StatCard label={settings.language === 'en' ? "Net Loans" : "债务净额"} value={calculations.loanNet} currency={displayCurrency} icon={<Landmark size={24} className="lg:w-8 lg:h-8" />} grad="from-pink-500/20 to-purple-500/10" text="text-purple-600" />
+        <StatCard label={settings.language === 'en' ? "Net Worth" : "净资产"} value={calculations.netWorth} currency={displayCurrency} icon={<TrendingUp size={24} className="lg:w-7 lg:h-7" />} grad="from-blue-500/20 to-indigo-500/10" text="text-indigo-600" />
+        <StatCard label={settings.language === 'en' ? "Liquid" : "流动资产"} value={calculations.liquidTotal} currency={displayCurrency} icon={<Wallet size={24} className="lg:w-7 lg:h-7" />} grad="from-emerald-500/20 to-teal-500/10" text="text-emerald-600" />
+        <StatCard label={settings.language === 'en' ? "Fixed" : "固定资产"} value={calculations.fixedTotal} currency={displayCurrency} icon={<Home size={24} className="lg:w-7 lg:h-7" />} grad="from-orange-500/20 to-amber-500/10" text="text-amber-600" />
+        <StatCard label={settings.language === 'en' ? "Net Loans" : "债务净额"} value={calculations.loanNet} currency={displayCurrency} icon={<Landmark size={24} className="lg:w-7 lg:h-7" />} grad="from-pink-500/20 to-purple-500/10" text="text-purple-600" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 sm:gap-12">
@@ -218,18 +216,18 @@ const DashboardView: React.FC = () => {
 };
 
 const StatCard: React.FC<{ label: string, value: number, currency: string, icon: React.ReactNode, grad: string, text: string }> = ({ label, value, currency, icon, grad, text }) => (
-  <div className={`p-8 lg:p-12 bg-white/40 backdrop-blur-xl border border-white/60 rounded-[32px] lg:rounded-[48px] shadow-lg relative overflow-hidden flex flex-col justify-center min-h-[160px] lg:min-h-[220px] group transition-all duration-700`}>
-    <div className={`absolute -right-8 -top-8 w-32 h-32 lg:w-56 lg:h-56 bg-gradient-to-br ${grad} rounded-full blur-3xl opacity-60 group-hover:scale-125 transition-transform duration-1000`}></div>
-    <div className="relative z-10 space-y-5 lg:space-y-8">
-       <div className="flex items-center gap-4 lg:gap-6">
-          <div className={`w-12 h-12 lg:w-16 lg:h-16 rounded-2xl lg:rounded-[24px] flex items-center justify-center bg-white shadow-md ${text}`}>{icon}</div>
-          <p className="text-lg lg:text-2xl font-black uppercase tracking-tighter text-slate-800 opacity-90 leading-none">{label}</p>
+  <div className={`p-8 lg:p-10 bg-white/40 backdrop-blur-xl border border-white/60 rounded-[32px] lg:rounded-[40px] shadow-lg relative overflow-hidden flex flex-col justify-center min-h-[140px] lg:min-h-[190px] group transition-all duration-700`}>
+    <div className={`absolute -right-8 -top-8 w-32 h-32 lg:w-48 lg:h-48 bg-gradient-to-br ${grad} rounded-full blur-3xl opacity-60 group-hover:scale-125 transition-transform duration-1000`}></div>
+    <div className="relative z-10 space-y-4 lg:space-y-6">
+       <div className="flex items-center gap-3 lg:gap-4">
+          <div className={`w-10 h-10 lg:w-14 lg:h-14 rounded-xl lg:rounded-[20px] flex items-center justify-center bg-white shadow-md ${text}`}>{icon}</div>
+          <p className="text-base lg:text-xl font-black uppercase tracking-tighter text-slate-800 opacity-90 leading-none">{label}</p>
        </div>
-       <div className="flex items-baseline gap-2 lg:gap-4 overflow-hidden">
-         <h4 className={`text-3xl lg:text-5xl font-black tracking-tighter leading-none ${value < 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+       <div className="flex items-baseline gap-1.5 lg:gap-3 overflow-hidden">
+         <h4 className={`text-2xl lg:text-4xl font-black tracking-tighter leading-none ${value < 0 ? 'text-rose-600' : 'text-slate-900'}`}>
            {value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
          </h4>
-         <span className="text-[11px] lg:text-[16px] font-black text-slate-400 tracking-widest uppercase">{currency}</span>
+         <span className="text-[10px] lg:text-[14px] font-black text-slate-400 tracking-widest uppercase">{currency}</span>
        </div>
     </div>
   </div>
