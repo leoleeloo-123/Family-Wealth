@@ -17,13 +17,13 @@ import {
   TrendingUp,
   Landmark
 } from 'lucide-react';
-import { AppData, AppSettings, TabName } from './types';
-import { INITIAL_APP_DATA } from './constants';
-import DashboardView from './views/Dashboard';
-import RecordsView from './views/Records';
-import MasterDataView from './views/MasterData';
-import DataManagementView from './views/DataManagement';
-import SettingsView from './views/Settings';
+import { AppData, AppSettings, TabName } from './types.ts';
+import { INITIAL_APP_DATA } from './constants.tsx';
+import DashboardView from './views/Dashboard.tsx';
+import RecordsView from './views/Records.tsx';
+import MasterDataView from './views/MasterData.tsx';
+import DataManagementView from './views/DataManagement.tsx';
+import SettingsView from './views/Settings.tsx';
 
 // Global Context for easier state access
 interface AppContextType {
@@ -50,7 +50,13 @@ const App: React.FC = () => {
   // Persistence (mocked local storage for refresh safety)
   useEffect(() => {
     const saved = localStorage.getItem('family_asset_data');
-    if (saved) setData(JSON.parse(saved));
+    if (saved) {
+      try {
+        setData(JSON.parse(saved));
+      } catch (e) {
+        console.error("Failed to parse saved data", e);
+      }
+    }
   }, []);
 
   useEffect(() => {
