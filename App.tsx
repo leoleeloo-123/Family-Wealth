@@ -51,8 +51,8 @@ const NavItem: React.FC<{
     onClick={() => setActiveTab(item.id as any)}
     className={`flex items-center transition-all duration-300 group ${
       // Desktop Styles: Use flex-none to prevent vertical expansion
-      'sm:flex-none sm:mb-2 ' + 
-      (isSidebarOpen ? 'sm:px-6 sm:py-4 sm:rounded-2xl sm:w-full sm:justify-start' : 'sm:p-0 sm:h-14 sm:w-14 sm:mx-auto sm:rounded-xl sm:justify-center') +
+      'sm:flex-none sm:mb-3 ' + 
+      (isSidebarOpen ? 'sm:px-8 sm:py-5 sm:rounded-[24px] sm:w-full sm:justify-start' : 'sm:p-0 sm:h-16 sm:w-16 sm:mx-auto sm:rounded-2xl sm:justify-center') +
       // Mobile Styles: Keep flex-1 for balanced bottom nav
       ' flex-1 flex-col sm:flex-row justify-center p-2 rounded-xl ' +
       // Active Styles
@@ -62,10 +62,10 @@ const NavItem: React.FC<{
     }`}
   >
     <div className={`transition-transform duration-500 flex-shrink-0 ${activeTab === item.id ? 'rotate-[10deg]' : 'group-hover:scale-110'}`}>
-      {React.cloneElement(item.icon, { size: 20, className: 'sm:w-6 sm:h-6' })}
+      {React.cloneElement(item.icon, { size: 20, className: 'sm:w-7 sm:h-7' })}
     </div>
     
-    <span className={`sm:ml-5 font-black text-[10px] sm:text-sm md:text-base lg:text-lg tracking-tight whitespace-nowrap transition-all duration-700 overflow-hidden text-center sm:text-left ${
+    <span className={`sm:ml-6 font-black text-[10px] sm:text-base md:text-xl lg:text-2xl tracking-tight whitespace-nowrap transition-all duration-700 overflow-hidden text-center sm:text-left ${
       !isSidebarOpen ? 'sm:hidden' : 'block'
     }`}>
       {item.label}
@@ -132,25 +132,25 @@ const App: React.FC = () => {
       >
         {/* Glass Navigation - Adaptive Sidebar/BottomBar */}
         <aside className={`${
-          isSidebarOpen ? 'sm:w-80' : 'sm:w-24'
-        } w-full flex-shrink-0 glass-sidebar rounded-[24px] sm:rounded-[32px] transition-all duration-500 flex flex-row sm:flex-col shadow-2xl relative z-30`}>
+          isSidebarOpen ? 'sm:w-96' : 'sm:w-28'
+        } w-full flex-shrink-0 glass-sidebar rounded-[24px] sm:rounded-[40px] transition-all duration-500 flex flex-row sm:flex-col shadow-2xl relative z-30`}>
           
-          <div className="hidden sm:flex p-8 items-center overflow-hidden">
-            <div className={`flex items-center transition-all duration-500 ${isSidebarOpen ? 'gap-4' : 'justify-center w-full'}`}>
-              <div className="w-14 h-14 flex-shrink-0 flex items-center justify-center relative">
+          <div className="hidden sm:flex p-10 items-center overflow-hidden">
+            <div className={`flex items-center transition-all duration-500 ${isSidebarOpen ? 'gap-6' : 'justify-center w-full'}`}>
+              <div className="w-16 h-16 flex-shrink-0 flex items-center justify-center relative">
                 {!useExternalLogo && <BrandLogoSVG />}
                 <img src="logo.png" alt="L" className={`max-w-full max-h-full object-contain absolute inset-0 transition-opacity ${useExternalLogo ? 'opacity-100' : 'opacity-0'}`} onLoad={() => setUseExternalLogo(true)} onError={() => setUseExternalLogo(false)} />
               </div>
               {isSidebarOpen && (
-                <h1 className="font-black text-2xl tracking-tighter text-slate-800 animate-in fade-in slide-in-from-left-4 duration-500">
+                <h1 className="font-black text-2xl md:text-3xl lg:text-4xl tracking-tighter text-slate-800 animate-in fade-in slide-in-from-left-4 duration-500 whitespace-nowrap">
                   {settings.language === 'en' ? 'Assets' : '家庭资产'}
                 </h1>
               )}
             </div>
           </div>
           
-          {/* Vertical items on desktop (sm:justify-start), horizontal on mobile (justify-around) */}
-          <nav className={`flex-1 flex flex-row sm:flex-col items-center justify-around sm:justify-start sm:mt-2 p-2 sm:p-4 overflow-x-auto no-scrollbar`}>
+          {/* Vertical items on desktop, horizontal on mobile */}
+          <nav className={`flex-1 flex flex-row sm:flex-col items-center justify-around sm:justify-start sm:mt-4 p-2 sm:p-6 overflow-x-auto no-scrollbar`}>
             {mainMenuItems.map((item) => (
               <NavItem key={item.id} item={item} activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
             ))}
@@ -158,20 +158,20 @@ const App: React.FC = () => {
 
           <button 
             onClick={() => setSidebarOpen(!isSidebarOpen)} 
-            className="hidden sm:block absolute -right-3 top-24 bg-white/80 backdrop-blur-md border border-white/40 rounded-full p-1.5 shadow-lg text-slate-400 hover:text-blue-600 transition-colors z-50"
+            className="hidden sm:block absolute -right-3.5 top-28 bg-white/80 backdrop-blur-md border border-white/40 rounded-full p-2 shadow-lg text-slate-400 hover:text-blue-600 transition-colors z-50"
           >
-            {isSidebarOpen ? <X size={14} /> : <Menu size={14} />}
+            {isSidebarOpen ? <X size={16} /> : <Menu size={16} />}
           </button>
         </aside>
 
-        <main className="flex-1 flex flex-col glass-card rounded-[24px] sm:rounded-[40px] overflow-hidden relative z-20">
-          <header className="h-20 sm:h-32 flex items-center px-6 sm:px-12 border-b border-white/20 bg-white/10 flex-shrink-0">
-             <h2 className="text-2xl sm:text-5xl lg:text-6xl font-black text-slate-800 tracking-tighter drop-shadow-sm leading-none animate-in fade-in slide-in-from-left-8">
+        <main className="flex-1 flex flex-col glass-card rounded-[24px] sm:rounded-[48px] overflow-hidden relative z-20">
+          <header className="h-20 sm:h-36 flex items-center px-6 sm:px-14 border-b border-white/20 bg-white/10 flex-shrink-0">
+             <h2 className="text-2xl sm:text-5xl lg:text-7xl font-black text-slate-800 tracking-tighter drop-shadow-sm leading-none animate-in fade-in slide-in-from-left-8">
                {mainMenuItems.find(m => m.id === activeTab)?.label}
              </h2>
           </header>
           
-          <div className="flex-1 overflow-auto p-4 sm:p-12 custom-scrollbar">
+          <div className="flex-1 overflow-auto p-4 sm:p-14 custom-scrollbar">
             {activeTab === 'Dashboard' && <DashboardView />}
             {activeTab === 'Records' && <RecordsView />}
             {activeTab === 'MasterData' && <MasterDataView />}
