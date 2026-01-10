@@ -20,6 +20,9 @@ import SettingsView from './views/Settings.tsx';
 
 const BrandLogoSVG = () => (
   <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-2xl" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="50" r="48" fill="rgba(251, 191, 36, 0.15)" filter="blur(4px)" />
+    <circle cx="50" cy="50" r="45" fill="url(#goldGrad)" stroke="#92400E" strokeWidth="0.5" />
+    <circle cx="50" cy="50" r="39" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" />
     <defs>
       <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" stopColor="#FDE68A" />
@@ -32,42 +35,9 @@ const BrandLogoSVG = () => (
         <stop offset="100%" stopColor="white" stopOpacity="0" />
       </linearGradient>
     </defs>
-    
-    <circle cx="50" cy="50" r="48" fill="rgba(251, 191, 36, 0.15)" filter="blur(4px)" />
-    <circle cx="50" cy="50" r="45" fill="url(#goldGrad)" stroke="#92400E" strokeWidth="0.5" />
-    <circle cx="50" cy="50" r="39" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" />
-    
-    <text 
-      x="50" 
-      y="69" 
-      fill="#78350F" 
-      fontSize="62" 
-      fontWeight="900" 
-      textAnchor="middle" 
-      fontFamily="system-ui, sans-serif"
-      style={{ opacity: 0.4 }}
-    >
-      $
-    </text>
-    <text 
-      x="50" 
-      y="67" 
-      fill="white" 
-      fontSize="62" 
-      fontWeight="900" 
-      textAnchor="middle" 
-      fontFamily="system-ui, sans-serif"
-      style={{ filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.15))' }}
-    >
-      $
-    </text>
-    
-    <path 
-      d="M18 42 Q 50 15 82 42 Q 50 30 18 42 Z" 
-      fill="url(#highlightGrad)" 
-      opacity="0.7"
-    />
-    <circle cx="50" cy="50" r="44.5" fill="none" stroke="white" strokeWidth="0.75" strokeOpacity="0.3" />
+    <text x="50" y="69" fill="#78350F" fontSize="62" fontWeight="900" textAnchor="middle" fontFamily="system-ui, sans-serif" style={{ opacity: 0.4 }}>$</text>
+    <text x="50" y="67" fill="white" fontSize="62" fontWeight="900" textAnchor="middle" fontFamily="system-ui, sans-serif" style={{ filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.15))' }}>$</text>
+    <path d="M18 42 Q 50 15 82 42 Q 50 30 18 42 Z" fill="url(#highlightGrad)" opacity="0.7" />
   </svg>
 );
 
@@ -87,10 +57,14 @@ const NavItem: React.FC<{
         : 'hover:bg-white/40 text-slate-700 hover:text-slate-900'
     }`}
   >
-    <div className={`transition-transform duration-500 ${activeTab === item.id ? 'rotate-[10deg]' : 'group-hover:scale-110'}`}>
+    <div className={`transition-transform duration-500 flex-shrink-0 ${activeTab === item.id ? 'rotate-[10deg]' : 'group-hover:scale-110'}`}>
       {item.icon}
     </div>
-    {isSidebarOpen && <span className="ml-5 font-black text-[17px] tracking-tight whitespace-nowrap">{item.label}</span>}
+    {isSidebarOpen && (
+      <span className="ml-5 font-black text-base md:text-lg lg:text-xl tracking-tight whitespace-nowrap transition-all duration-700 overflow-hidden">
+        {item.label}
+      </span>
+    )}
   </button>
 );
 
@@ -160,7 +134,7 @@ const App: React.FC = () => {
                 <img src="logo.png" alt="L" className={`max-w-full max-h-full object-contain absolute inset-0 transition-opacity ${useExternalLogo ? 'opacity-100' : 'opacity-0'}`} onLoad={() => setUseExternalLogo(true)} onError={() => setUseExternalLogo(false)} />
               </div>
               {isSidebarOpen && (
-                <h1 className="font-black text-2xl tracking-tighter text-slate-800 animate-in fade-in slide-in-from-left-4 duration-500">
+                <h1 className="font-black text-2xl md:text-3xl lg:text-3xl tracking-tighter text-slate-800 animate-in fade-in slide-in-from-left-4 duration-500 transition-all">
                   {settings.language === 'en' ? 'Assets' : '家庭资产'}
                 </h1>
               )}
@@ -180,15 +154,15 @@ const App: React.FC = () => {
 
         {/* Main Glass Content */}
         <main className="flex-1 flex flex-col glass-card rounded-[40px] overflow-hidden relative z-20">
-          <header className="h-20 flex items-center px-12 border-b border-white/20 bg-white/10 flex-shrink-0">
-             <h2 className="text-2xl font-black text-slate-800 tracking-tight drop-shadow-sm">
+          <header className="h-28 md:h-32 flex items-center px-12 border-b border-white/20 bg-white/10 flex-shrink-0 transition-all duration-700">
+             <h2 className="text-3xl md:text-5xl lg:text-6xl font-black text-slate-800 tracking-tighter drop-shadow-sm leading-none transition-all duration-700 animate-in fade-in slide-in-from-left-8">
                {mainMenuItems.find(m => m.id === activeTab)?.label}
              </h2>
              
              <div className="ml-auto flex items-center gap-4">
-                <div className="flex items-center gap-3 px-5 py-2.5 bg-white/40 border border-white/60 rounded-2xl text-slate-600 shadow-sm">
+                <div className="flex items-center gap-3 px-5 py-2.5 bg-white/40 border border-white/60 rounded-2xl text-slate-600 shadow-xl backdrop-blur-md">
                   <Globe size={18} className="text-blue-500" />
-                  <span className="text-sm font-black tracking-widest">{settings.baseCurrency}</span>
+                  <span className="text-sm font-black tracking-[0.2em]">{settings.baseCurrency}</span>
                 </div>
              </div>
           </header>
