@@ -1,21 +1,14 @@
-
 import React, { useContext, useMemo } from 'react';
 import { AppContext } from '../App';
 import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
   PieChart, 
   Pie, 
   Cell,
-  Legend
+  Tooltip,
+  Legend,
+  ResponsiveContainer 
 } from 'recharts';
-import { TrendingUp, Wallet, Landmark, Home, ArrowUpRight, ArrowDownRight } from 'lucide-react';
-// Import LoanRecord type to fix typing errors in calculations
+import { TrendingUp, Wallet, Home, Landmark } from 'lucide-react';
 import { LoanRecord } from '../types';
 
 const DashboardView: React.FC = () => {
@@ -23,34 +16,43 @@ const DashboardView: React.FC = () => {
   if (!context) return null;
   const { data, settings } = context;
 
+  // Helper to ensure values are safe for React rendering (no raw Date objects or mismatched symbols)
+  const renderVal = (val: any): string => {
+    if (val === null || val === undefined) return '';
+    if (val instanceof Date) return val.toLocaleDateString();
+    
+    // Check if it's a React element to avoid processing it as a plain object
+    if (val && typeof val === 'object' && '$$typeof' in val) {
+      return '[React Element]';
+    }
+
+    if (typeof val === 'object') {
+      try {
+        return JSON.stringify(val);
+      } catch (e) {
+        return '[Complex Object]';
+      }
+    }
+    return String(val);
+  };
+
   // 1. Exchange Rate Helper
   const getExchangeRate = (from: string, to: string) => {
     if (from === to) return 1;
     const rates = [...data.汇率].sort((a, b) => new Date(b.时间).getTime() - new Date(a.时间).getTime());
     const rate = rates.find(r => r.基准币种 === to && r.报价币种 === from);
-    return rate ? rate.汇率 : 1; // Default to 1 if not found, usually should prompt
+    return rate ? rate.汇率 : 1;
   };
 
   // 2. Snapshot Calculations
   const calculations = useMemo(() => {
-    // Liquid Assets
-    const accountSnapshots: Record<string, number> = {};
-    data.流动资产记录.forEach(record => {
-      const existing = accountSnapshots[record.账户ID];
-      const recordDate = new Date(record.时间).getTime();
-      if (!existing || recordDate > new Date(record.时间).getTime()) {
-         // This is a bit inefficient, usually we sort first.
-      }
-    });
-
-    // Let's do it properly: Sort then pick last
     const latestLiquidByAccount = data.账户.map(acc => {
       const records = data.流动资产记录
         .filter(r => r.账户ID === acc.账户ID)
         .sort((a, b) => new Date(b.时间).getTime() - new Date(a.时间).getTime());
       const latest = records[0];
-      const value = latest ? latest.市值 : 0;
-      const currency = latest ? latest.币种 : acc.资产类型; // Fallback to asset type or something
+      const value = latest ? Number(latest.市值) || 0 : 0;
+      const currency = latest ? latest.币种 : acc.资产类型; 
       const converted = value * getExchangeRate(currency, settings.baseCurrency);
       return { ...acc, value, converted, member: acc.成员昵称 };
     });
@@ -60,43 +62,39 @@ const DashboardView: React.FC = () => {
         .filter(r => r.资产ID === asset.资产ID)
         .sort((a, b) => new Date(b.时间).getTime() - new Date(a.时间).getTime());
       const latest = records[0];
-      const value = latest ? latest.估值 : asset.购入价格;
+      const value = latest ? Number(latest.估值) || 0 : Number(asset.购入价格) || 0;
       const converted = value * getExchangeRate(asset.币种, settings.baseCurrency);
       return { ...asset, value, converted, member: asset.成员昵称 };
     });
 
-    // Lending/Borrowing
     const latestLoans = data.借入借出记录
       .filter(l => l.结清 !== '是')
       .reduce((acc, l) => {
         const key = `${l.成员ID}-${l.借款对象}-${l.借入借出}`;
         const existing = acc[key];
-        // Use .getTime() for reliable date comparison in TypeScript to avoid 'unknown' issues
         if (!existing || new Date(l.时间).getTime() > new Date(existing.时间).getTime()) {
           acc[key] = l;
         }
         return acc;
       }, {} as Record<string, LoanRecord>);
 
-    const loansList = Object.values(latestLoans);
-    // Use the correctly typed loansList to perform calculations
-    const lendingTotal = (loansList as LoanRecord[])
+    const loansList: LoanRecord[] = Object.values(latestLoans);
+    const lendingTotal = loansList
       .filter(l => l.借入借出 === '借出')
-      .reduce((sum, l) => sum + l.借款额 * getExchangeRate(l.币种, settings.baseCurrency), 0);
-    const borrowingTotal = (loansList as LoanRecord[])
+      .reduce((sum, l) => sum + (Number(l.借款额) || 0) * getExchangeRate(l.币种, settings.baseCurrency), 0);
+    const borrowingTotal = loansList
       .filter(l => l.借入借出 === '借入')
-      .reduce((sum, l) => sum + l.借款额 * getExchangeRate(l.币种, settings.baseCurrency), 0);
+      .reduce((sum, l) => sum + (Number(l.借款额) || 0) * getExchangeRate(l.币种, settings.baseCurrency), 0);
 
     const liquidTotal = latestLiquidByAccount.reduce((sum, item) => sum + item.converted, 0);
     const fixedTotal = latestFixedByAsset.reduce((sum, item) => sum + item.converted, 0);
     const netWorth = liquidTotal + fixedTotal + lendingTotal - borrowingTotal;
 
-    // Member Breakdown
     const memberData = data.成员.map(m => {
       const m_liquid = latestLiquidByAccount.filter(a => a.成员ID === m.成员ID).reduce((s, i) => s + i.converted, 0);
       const m_fixed = latestFixedByAsset.filter(a => a.成员ID === m.成员ID).reduce((s, i) => s + i.converted, 0);
-      return { name: m.成员昵称, value: m_liquid + m_fixed };
-    });
+      return { name: renderVal(m.成员昵称), value: m_liquid + m_fixed };
+    }).filter(m => m.value > 0);
 
     return { netWorth, liquidTotal, fixedTotal, lendingTotal, borrowingTotal, memberData, latestLiquidByAccount };
   }, [data, settings]);
@@ -105,7 +103,6 @@ const DashboardView: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Top Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard 
           label="Family Net Worth" 
@@ -138,7 +135,6 @@ const DashboardView: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Pie Chart: Member Allocation */}
         <div className={`p-6 rounded-xl border ${settings.theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
           <h3 className="text-lg font-semibold mb-4">Member Allocation</h3>
           <div className="h-64">
@@ -162,7 +158,6 @@ const DashboardView: React.FC = () => {
           </div>
         </div>
 
-        {/* Detailed List: Recent Accounts */}
         <div className={`lg:col-span-2 p-6 rounded-xl border ${settings.theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
           <h3 className="text-lg font-semibold mb-4">Account Snapshot</h3>
           <div className="overflow-x-auto">
@@ -171,23 +166,19 @@ const DashboardView: React.FC = () => {
                 <tr className="border-b border-gray-100 text-sm text-gray-400">
                   <th className="pb-3 font-medium">Account</th>
                   <th className="pb-3 font-medium">Member</th>
-                  <th className="pb-3 font-medium">Type</th>
-                  <th className="pb-3 font-medium text-right">Value (Original)</th>
+                  <th className="pb-3 font-medium text-right">Value (Orig)</th>
                   <th className="pb-3 font-medium text-right">Value ({settings.baseCurrency})</th>
                 </tr>
               </thead>
               <tbody className="text-sm">
                 {calculations.latestLiquidByAccount.slice(0, 8).map((acc, i) => (
                   <tr key={i} className="border-b border-gray-50 hover:bg-gray-50/50">
-                    <td className="py-4 font-medium">{acc.账户昵称}</td>
-                    <td className="py-4">{acc.member}</td>
-                    <td className="py-4 text-xs">
-                      <span className="px-2 py-1 bg-gray-100 rounded-full">{acc.账户类型}</span>
-                    </td>
+                    <td className="py-4 font-medium">{renderVal(acc.账户昵称)}</td>
+                    <td className="py-4">{renderVal(acc.member)}</td>
                     <td className="py-4 text-right tabular-nums">
                       {acc.value.toLocaleString()} 
                     </td>
-                    <td className="py-4 text-right font-semibold tabular-nums">
+                    <td className="py-4 text-right font-semibold tabular-nums text-blue-600">
                       {Math.round(acc.converted).toLocaleString()}
                     </td>
                   </tr>
@@ -203,7 +194,7 @@ const DashboardView: React.FC = () => {
 
 const StatCard: React.FC<{ label: string, value: number, currency: string, icon: React.ReactNode, color: string }> = ({ label, value, currency, icon, color }) => {
   return (
-    <div className={`p-6 bg-white rounded-xl border border-gray-200 shadow-sm flex items-start justify-between`}>
+    <div className="p-6 bg-white rounded-xl border border-gray-200 shadow-sm flex items-start justify-between">
       <div>
         <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
         <div className="flex items-baseline gap-2">
@@ -213,7 +204,7 @@ const StatCard: React.FC<{ label: string, value: number, currency: string, icon:
           <span className="text-xs font-bold text-gray-400">{currency}</span>
         </div>
       </div>
-      <div className={`p-3 bg-${color}-50 rounded-lg`}>
+      <div className={`p-3 rounded-lg bg-slate-50`}>
         {icon}
       </div>
     </div>

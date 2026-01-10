@@ -1,14 +1,14 @@
 
 import React, { useContext, useState } from 'react';
 import { AppContext } from '../App';
-import { Plus, Search, MoreVertical, Trash2, Shield, Eye, EyeOff } from 'lucide-react';
+import { Plus, Search, MoreVertical, Trash2, Eye, EyeOff } from 'lucide-react';
 import { TabName } from '../types';
 import { EXCEL_STRUCTURE } from '../constants';
 
 const MasterDataView: React.FC = () => {
   const context = useContext(AppContext);
   if (!context) return null;
-  const { data, setData, generateId } = context;
+  const { data, setData } = context;
 
   const [activeTab, setActiveTab] = useState<TabName>('成员');
   const [searchTerm, setSearchTerm] = useState('');
@@ -18,7 +18,7 @@ const MasterDataView: React.FC = () => {
 
   const filteredData = (data[activeTab] as any[]).filter(item => 
     Object.values(item).some(val => 
-      String(val).toLowerCase().includes(searchTerm.toLowerCase())
+      String(val || '').toLowerCase().includes(searchTerm.toLowerCase())
     )
   );
 
@@ -30,6 +30,37 @@ const MasterDataView: React.FC = () => {
   };
 
   const idColumn = EXCEL_STRUCTURE[activeTab][0];
+
+  const renderCellContent = (row: any, col: string) => {
+    const value = row[col];
+    const isPassword = col === '密码';
+    const showPass = showPasswords[row[idColumn]];
+
+    if (isPassword) {
+      return (
+        <div className="flex items-center gap-2">
+          <span>{showPass ? String(value) : '••••••••'}</span>
+          <button 
+            onClick={() => setShowPasswords(prev => ({ ...prev, [row[idColumn]]: !showPass }))}
+            className="text-slate-400 hover:text-blue-500"
+          >
+            {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
+          </button>
+        </div>
+      );
+    }
+
+    if (col.includes('ID')) {
+      return (
+        <span className="font-mono text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-500">
+          {String(value)}
+        </span>
+      );
+    }
+
+    if (value instanceof Date) return value.toLocaleDateString();
+    return value !== null && value !== undefined ? String(value) : '';
+  };
 
   return (
     <div className="space-y-6">
@@ -77,33 +108,11 @@ const MasterDataView: React.FC = () => {
             <tbody className="divide-y divide-slate-100">
               {filteredData.map((row, idx) => (
                 <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                  {EXCEL_STRUCTURE[activeTab].map(col => {
-                    const value = row[col];
-                    const isPassword = col === '密码';
-                    const showPass = showPasswords[row[idColumn]];
-
-                    return (
-                      <td key={col} className="px-6 py-4 text-sm text-slate-600 whitespace-nowrap">
-                        {isPassword ? (
-                          <div className="flex items-center gap-2">
-                            <span>{showPass ? value : '••••••••'}</span>
-                            <button 
-                              onClick={() => setShowPasswords(prev => ({ ...prev, [row[idColumn]]: !showPass }))}
-                              className="text-slate-400 hover:text-blue-500"
-                            >
-                              {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                            </button>
-                          </div>
-                        ) : col.includes('ID') ? (
-                          <span className="font-mono text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-500">
-                            {value}
-                          </span>
-                        ) : (
-                          value
-                        )}
-                      </td>
-                    );
-                  })}
+                  {EXCEL_STRUCTURE[activeTab].map(col => (
+                    <td key={col} className="px-6 py-4 text-sm text-slate-600 whitespace-nowrap">
+                      {renderCellContent(row, col)}
+                    </td>
+                  ))}
                   <td className="px-6 py-4 text-center">
                     <button 
                       onClick={() => handleDelete(idColumn, row[idColumn])}
