@@ -194,12 +194,10 @@ const RecordsView: React.FC = () => {
     const newRows = [...editingRows];
     newRows[idx][field] = value;
     
-    // Auto-fill lookups - FIXED to prevent setting currency to undefined if master data field is missing
     if (modalType === 'liquid' && field === '账户昵称') {
       const acc = data.账户.find(a => a.账户昵称 === value);
       if (acc) {
         newRows[idx].账户ID = acc.账户ID;
-        // Only overwrite currency if it exists in master data, otherwise keep existing/default
         if (acc.币种) newRows[idx].币种 = acc.币种;
       }
     } else if (modalType === 'fixed' && field === '资产昵称') {
@@ -405,136 +403,153 @@ const RecordsView: React.FC = () => {
 
       {/* Entry Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-3xl flex items-center justify-center p-4 sm:p-8 z-[100] animate-in fade-in zoom-in-95 duration-300">
-          <div className="glass-card rounded-[40px] sm:rounded-[56px] shadow-4xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden bg-white/95 border-white">
-             <header className="px-10 py-8 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
-                  <h3 className="text-3xl font-black tracking-tighter text-slate-900">{isEditMode ? (isZh ? '编辑记录' : 'Edit Record') : (isZh ? '新增历史记录' : 'Batch Record Entry')}</h3>
-                  <p className="text-slate-400 text-xs font-black uppercase tracking-widest mt-1">{isZh ? '资产历史同步协议' : 'Asset History Synchronization Protocol'}</p>
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-3xl flex items-center justify-center p-4 sm:p-8 z-[100] animate-in fade-in zoom-in-95 duration-300">
+          <div className="glass-card rounded-[40px] sm:rounded-[56px] shadow-4xl w-full max-w-6xl max-h-[95vh] flex flex-col overflow-hidden bg-white/95 border-white">
+             {/* Optimized Header: Prevent Overlap */}
+             <header className="px-6 sm:px-10 py-6 sm:py-8 border-b border-slate-100 flex flex-col gap-6 relative">
+                {/* Title & Close Row */}
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-2xl sm:text-3xl font-black tracking-tighter text-slate-900">{isEditMode ? (isZh ? '编辑记录' : 'Edit Record') : (isZh ? '批量同步历史' : 'Batch Sync History')}</h3>
+                    <p className="text-slate-400 text-[10px] sm:text-xs font-black uppercase tracking-widest mt-1 opacity-60">{isZh ? '资产主权同步协议' : 'Asset Sovereignty Protocol'}</p>
+                  </div>
+                  <button onClick={() => setIsModalOpen(false)} className="p-3 sm:p-4 hover:bg-slate-100 rounded-2xl text-slate-300 hover:text-slate-600 transition-all flex-shrink-0 border border-transparent hover:border-slate-200 shadow-sm">
+                    <X size={24} strokeWidth={2.5} />
+                  </button>
                 </div>
+
+                {/* Navigation Controls Row */}
                 {!isEditMode && (
-                  <div className="flex bg-slate-100 p-1 rounded-2xl">
-                    {(['liquid', 'fixed', 'loan'] as const).map(type => (
-                      <button key={type} onClick={() => { setModalType(type); setEditingRows([createEmptyRow(type)]); }} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${modalType === type ? 'bg-white shadow-lg text-blue-600' : 'text-slate-400'}`}>
-                        {type === 'liquid' ? (isZh ? '流动' : 'Liquid') : type === 'fixed' ? (isZh ? '固定' : 'Fixed') : (isZh ? '借贷' : 'Loan')}
-                      </button>
-                    ))}
+                  <div className="flex items-center justify-between gap-4 sm:gap-10 border-t border-slate-50 pt-6 sm:pt-0 sm:border-t-0">
+                    <div className="flex bg-slate-900/5 p-1.5 rounded-[22px] border border-slate-200/50 backdrop-blur-sm shadow-inner w-full sm:w-auto">
+                      {(['liquid', 'fixed', 'loan'] as const).map(type => (
+                        <button 
+                          key={type} 
+                          onClick={() => { setModalType(type); setEditingRows([createEmptyRow(type)]); }} 
+                          className={`flex-1 sm:flex-none px-4 sm:px-8 py-2.5 rounded-[18px] text-[10px] sm:text-[11px] font-black uppercase tracking-widest transition-all duration-500 ${modalType === type ? 'bg-white shadow-xl text-blue-600 scale-[1.05]' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                          {type === 'liquid' ? (isZh ? '流动' : 'Liquid') : type === 'fixed' ? (isZh ? '固定' : 'Fixed') : (isZh ? '借贷' : 'Loan')}
+                        </button>
+                      ))}
+                    </div>
+                    {/* Add more context or info here if needed */}
                   </div>
                 )}
-                <button onClick={() => setIsModalOpen(false)} className="absolute right-8 top-8 p-3 hover:bg-slate-100 rounded-full text-slate-300"><X size={24} /></button>
              </header>
 
-             <div className="flex-1 overflow-auto p-8 custom-scrollbar">
-                <table className="w-full text-left border-separate border-spacing-0">
-                  <thead>
-                    <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                      {modalType === 'liquid' && <>
-                        <th className="px-4 pb-4">{isZh ? '关联账户' : 'Account'}</th>
-                        <th className="px-4 pb-4">{isZh ? '时间' : 'Date'}</th>
-                        <th className="px-4 pb-4">{isZh ? '市值' : 'Valuation'}</th>
-                        <th className="px-4 pb-4">{isZh ? '币种' : 'CCY'}</th>
-                        <th className="px-4 pb-4">{isZh ? '备注' : 'Notes'}</th>
-                      </>}
-                      {modalType === 'fixed' && <>
-                        <th className="px-4 pb-4">{isZh ? '关联资产' : 'Asset'}</th>
-                        <th className="px-4 pb-4">{isZh ? '时间' : 'Date'}</th>
-                        <th className="px-4 pb-4">{isZh ? '估值' : 'Valuation'}</th>
-                        <th className="px-4 pb-4">{isZh ? '币种' : 'CCY'}</th>
-                        <th className="px-4 pb-4">{isZh ? '备注' : 'Notes'}</th>
-                      </>}
-                      {modalType === 'loan' && <>
-                        <th className="px-4 pb-4">{isZh ? '关联成员' : 'Member'}</th>
-                        <th className="px-4 pb-4">{isZh ? '方向' : 'Dir'}</th>
-                        <th className="px-4 pb-4">{isZh ? '借款对象' : 'Party'}</th>
-                        <th className="px-4 pb-4">{isZh ? '时间' : 'Date'}</th>
-                        <th className="px-4 pb-4">{isZh ? '金额' : 'Amount'}</th>
-                        <th className="px-4 pb-4">{isZh ? '结清' : 'Paid'}</th>
-                        <th className="px-4 pb-4">{isZh ? '备注' : 'Notes'}</th>
-                      </>}
-                      {!isEditMode && <th className="px-4 pb-4 w-12 text-center"></th>}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {editingRows.map((row, idx) => (
-                      <tr key={idx} className="group hover:bg-slate-50/50 transition-all">
+             <div className="flex-1 overflow-auto p-4 sm:p-10 custom-scrollbar bg-slate-50/20">
+                <div className="min-w-[800px]">
+                  <table className="w-full text-left border-separate border-spacing-0">
+                    <thead>
+                      <tr className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
                         {modalType === 'liquid' && <>
-                          <td className="px-2 py-4">
-                            <select value={row.账户昵称} onChange={(e) => updateRow(idx, '账户昵称', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none">
-                              <option value="">-- {isZh ? '选择账户' : 'Select'} --</option>
-                              {data.账户.map(a => <option key={a.账户ID} value={a.账户昵称}>{a.账户昵称}</option>)}
-                            </select>
-                          </td>
-                          <td className="px-2 py-4"><input type="date" value={row.时间} onChange={(e) => updateRow(idx, '时间', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold outline-none" /></td>
-                          <td className="px-2 py-4"><input type="number" value={row.市值} onChange={(e) => updateRow(idx, '市值', Number(e.target.value))} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-black text-blue-600 outline-none" /></td>
-                          <td className="px-2 py-4">
-                            <select value={row.币种} onChange={(e) => updateRow(idx, '币种', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-black outline-none">
-                              {Array.from(new Set([...data.汇率.map(r => r.报价币种), settings.baseCurrency])).filter(Boolean).map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
-                          </td>
-                          <td className="px-2 py-4"><input type="text" value={row.市值备注} onChange={(e) => updateRow(idx, '市值备注', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-medium outline-none" placeholder="..." /></td>
+                          <th className="px-4 pb-6">{isZh ? '关联账户' : 'Account'}</th>
+                          <th className="px-4 pb-6">{isZh ? '时间' : 'Date'}</th>
+                          <th className="px-4 pb-6">{isZh ? '市值' : 'Valuation'}</th>
+                          <th className="px-4 pb-6">{isZh ? '币种' : 'CCY'}</th>
+                          <th className="px-4 pb-6">{isZh ? '备注' : 'Notes'}</th>
                         </>}
                         {modalType === 'fixed' && <>
-                          <td className="px-2 py-4">
-                            <select value={row.资产昵称} onChange={(e) => updateRow(idx, '资产昵称', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold outline-none">
-                              <option value="">-- {isZh ? '选择资产' : 'Select'} --</option>
-                              {data.固定资产.map(a => <option key={a.资产ID} value={a.资产昵称}>{a.资产昵称}</option>)}
-                            </select>
-                          </td>
-                          <td className="px-2 py-4"><input type="date" value={row.时间} onChange={(e) => updateRow(idx, '时间', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold outline-none" /></td>
-                          <td className="px-2 py-4"><input type="number" value={row.估值} onChange={(e) => updateRow(idx, '估值', Number(e.target.value))} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-black text-amber-600 outline-none" /></td>
-                          <td className="px-2 py-4">
-                             <select value={row.币种} onChange={(e) => updateRow(idx, '币种', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-black outline-none">
-                                {Array.from(new Set([...data.汇率.map(r => r.报价币种), settings.baseCurrency])).filter(Boolean).map(c => <option key={c} value={c}>{c}</option>)}
-                             </select>
-                          </td>
-                          <td className="px-2 py-4"><input type="text" value={row.估值备注} onChange={(e) => updateRow(idx, '估值备注', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-medium outline-none" placeholder="..." /></td>
+                          <th className="px-4 pb-6">{isZh ? '关联资产' : 'Asset'}</th>
+                          <th className="px-4 pb-6">{isZh ? '时间' : 'Date'}</th>
+                          <th className="px-4 pb-6">{isZh ? '估值' : 'Valuation'}</th>
+                          <th className="px-4 pb-6">{isZh ? '币种' : 'CCY'}</th>
+                          <th className="px-4 pb-6">{isZh ? '备注' : 'Notes'}</th>
                         </>}
                         {modalType === 'loan' && <>
-                          <td className="px-1 py-4">
-                            <select value={row.成员昵称} onChange={(e) => updateRow(idx, '成员昵称', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-2 py-2 text-[11px] font-bold outline-none">
-                               <option value="">-</option>
-                               {data.成员.map(m => <option key={m.成员ID} value={m.成员昵称}>{m.成员昵称}</option>)}
-                            </select>
-                          </td>
-                          <td className="px-1 py-4">
-                            <select value={row.借入借出} onChange={(e) => updateRow(idx, '借入借出', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-2 py-2 text-[11px] font-bold outline-none">
-                              <option value="借入">{isZh ? '借入' : 'In'}</option>
-                              <option value="借出">{isZh ? '借出' : 'Out'}</option>
-                            </select>
-                          </td>
-                          <td className="px-1 py-4"><input type="text" value={row.借款对象} onChange={(e) => updateRow(idx, '借款对象', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-2 py-2 text-[11px] font-bold outline-none" placeholder="..." /></td>
-                          <td className="px-1 py-4"><input type="date" value={row.时间} onChange={(e) => updateRow(idx, '时间', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-2 py-2 text-[11px] font-bold outline-none" /></td>
-                          <td className="px-1 py-4"><input type="number" value={row.借款额} onChange={(e) => updateRow(idx, '借款额', Number(e.target.value))} className="w-full bg-white border border-slate-200 rounded-xl px-2 py-2 text-[11px] font-black text-rose-600 outline-none" /></td>
-                          <td className="px-1 py-4">
-                             <select value={row.结清} onChange={(e) => updateRow(idx, '结清', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-2 py-2 text-[11px] font-bold outline-none">
-                                <option value="否">{isZh ? '否' : 'No'}</option>
-                                <option value="是">{isZh ? '是' : 'Yes'}</option>
-                             </select>
-                          </td>
-                          <td className="px-1 py-4"><input type="text" value={row.借款备注} onChange={(e) => updateRow(idx, '借款备注', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-2 py-2 text-[11px] font-medium outline-none" /></td>
+                          <th className="px-4 pb-6">{isZh ? '关联成员' : 'Member'}</th>
+                          <th className="px-4 pb-6">{isZh ? '方向' : 'Dir'}</th>
+                          <th className="px-4 pb-6">{isZh ? '借款对象' : 'Party'}</th>
+                          <th className="px-4 pb-6">{isZh ? '时间' : 'Date'}</th>
+                          <th className="px-4 pb-6">{isZh ? '金额' : 'Amount'}</th>
+                          <th className="px-4 pb-6">{isZh ? '结清' : 'Paid'}</th>
+                          <th className="px-4 pb-6">{isZh ? '备注' : 'Notes'}</th>
                         </>}
-                        {!isEditMode && (
-                          <td className="px-2 py-4">
-                            <button onClick={() => handleRemoveRow(idx)} className="w-8 h-8 rounded-lg bg-rose-50 text-rose-400 hover:bg-rose-500 hover:text-white flex items-center justify-center transition-all opacity-0 group-hover:opacity-100">
-                              <Trash size={14}/>
-                            </button>
-                          </td>
-                        )}
+                        {!isEditMode && <th className="px-4 pb-6 w-12 text-center"></th>}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100/50">
+                      {editingRows.map((row, idx) => (
+                        <tr key={idx} className="group hover:bg-white transition-all">
+                          {modalType === 'liquid' && <>
+                            <td className="px-2 py-4">
+                              <select value={row.账户昵称} onChange={(e) => updateRow(idx, '账户昵称', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold focus:ring-4 focus:ring-blue-500/10 outline-none transition-all">
+                                <option value="">-- {isZh ? '选择账户' : 'Select'} --</option>
+                                {data.账户.map(a => <option key={a.账户ID} value={a.账户昵称}>{a.账户昵称}</option>)}
+                              </select>
+                            </td>
+                            <td className="px-2 py-4"><input type="date" value={row.时间} onChange={(e) => updateRow(idx, '时间', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none" /></td>
+                            <td className="px-2 py-4"><input type="number" value={row.市值} onChange={(e) => updateRow(idx, '市值', Number(e.target.value))} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-black text-blue-600 outline-none" /></td>
+                            <td className="px-2 py-4">
+                              <select value={row.币种} onChange={(e) => updateRow(idx, '币种', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs font-black outline-none">
+                                {Array.from(new Set([...data.汇率.map(r => r.报价币种), settings.baseCurrency])).filter(Boolean).map(c => <option key={c} value={c}>{c}</option>)}
+                              </select>
+                            </td>
+                            <td className="px-2 py-4"><input type="text" value={row.市值备注} onChange={(e) => updateRow(idx, '市值备注', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium outline-none" placeholder="..." /></td>
+                          </>}
+                          {modalType === 'fixed' && <>
+                            <td className="px-2 py-4">
+                              <select value={row.资产昵称} onChange={(e) => updateRow(idx, '资产昵称', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none transition-all">
+                                <option value="">-- {isZh ? '选择资产' : 'Select'} --</option>
+                                {data.固定资产.map(a => <option key={a.资产ID} value={a.资产昵称}>{a.资产昵称}</option>)}
+                              </select>
+                            </td>
+                            <td className="px-2 py-4"><input type="date" value={row.时间} onChange={(e) => updateRow(idx, '时间', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none" /></td>
+                            <td className="px-2 py-4"><input type="number" value={row.估值} onChange={(e) => updateRow(idx, '估值', Number(e.target.value))} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-black text-amber-600 outline-none" /></td>
+                            <td className="px-2 py-4">
+                               <select value={row.币种} onChange={(e) => updateRow(idx, '币种', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs font-black outline-none">
+                                  {Array.from(new Set([...data.汇率.map(r => r.报价币种), settings.baseCurrency])).filter(Boolean).map(c => <option key={c} value={c}>{c}</option>)}
+                               </select>
+                            </td>
+                            <td className="px-2 py-4"><input type="text" value={row.估值备注} onChange={(e) => updateRow(idx, '估值备注', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium outline-none" placeholder="..." /></td>
+                          </>}
+                          {modalType === 'loan' && <>
+                            <td className="px-1 py-4">
+                              <select value={row.成员昵称} onChange={(e) => updateRow(idx, '成员昵称', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-2 py-3 text-[11px] font-bold outline-none">
+                                 <option value="">-</option>
+                                 {data.成员.map(m => <option key={m.成员ID} value={m.成员昵称}>{m.成员昵称}</option>)}
+                              </select>
+                            </td>
+                            <td className="px-1 py-4">
+                              <select value={row.借入借出} onChange={(e) => updateRow(idx, '借入借出', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-2 py-3 text-[11px] font-bold outline-none">
+                                <option value="借入">{isZh ? '借入' : 'In'}</option>
+                                <option value="借出">{isZh ? '借出' : 'Out'}</option>
+                              </select>
+                            </td>
+                            <td className="px-1 py-4"><input type="text" value={row.借款对象} onChange={(e) => updateRow(idx, '借款对象', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-2 py-3 text-[11px] font-bold outline-none" placeholder="..." /></td>
+                            <td className="px-1 py-4"><input type="date" value={row.时间} onChange={(e) => updateRow(idx, '时间', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-2 py-3 text-[11px] font-bold outline-none" /></td>
+                            <td className="px-1 py-4"><input type="number" value={row.借款额} onChange={(e) => updateRow(idx, '借款额', Number(e.target.value))} className="w-full bg-white border border-slate-200 rounded-xl px-2 py-3 text-[11px] font-black text-rose-600 outline-none" /></td>
+                            <td className="px-1 py-4">
+                               <select value={row.结清} onChange={(e) => updateRow(idx, '结清', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-2 py-3 text-[11px] font-bold outline-none">
+                                  <option value="否">{isZh ? '否' : 'No'}</option>
+                                  <option value="是">{isZh ? '是' : 'Yes'}</option>
+                               </select>
+                            </td>
+                            <td className="px-1 py-4"><input type="text" value={row.借款备注} onChange={(e) => updateRow(idx, '借款备注', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-2 py-3 text-[11px] font-medium outline-none" /></td>
+                          </>}
+                          {!isEditMode && (
+                            <td className="px-2 py-4">
+                              <button onClick={() => handleRemoveRow(idx)} className="w-10 h-10 rounded-xl bg-rose-50 text-rose-400 hover:bg-rose-500 hover:text-white flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 shadow-sm">
+                                <Trash size={16}/>
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
                 {!isEditMode && (
-                  <button onClick={handleAddRow} className="mt-8 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-blue-600 transition-all">
-                    <Plus size={16} strokeWidth={3} /> {isZh ? '添加新行' : 'Append New Row'}
+                  <button onClick={handleAddRow} className="mt-8 flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-blue-600 transition-all bg-white/40 px-6 py-3 rounded-2xl border border-slate-100 hover:border-blue-100 shadow-sm">
+                    <Plus size={18} strokeWidth={3} /> {isZh ? '添加新条目' : 'Append Entry'}
                   </button>
                 )}
              </div>
 
-             <footer className="px-10 py-8 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-4">
-                <button onClick={() => setIsModalOpen(false)} className="px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:bg-white transition-all">{isZh ? '取消' : 'Cancel'}</button>
-                <button onClick={handleSaveModal} className="px-12 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 hover:bg-black transition-all shadow-xl shadow-slate-900/10">
-                  <Save size={18}/> {isZh ? (isEditMode ? '保存修改' : '确认入库') : (isEditMode ? 'Save Changes' : 'Commit to Vault')}
+             <footer className="px-6 sm:px-10 py-6 sm:py-8 border-t border-slate-100 bg-white/80 backdrop-blur-md flex flex-col sm:flex-row justify-end gap-4">
+                <button onClick={() => setIsModalOpen(false)} className="px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50 transition-all">{isZh ? '取消' : 'Cancel'}</button>
+                <button onClick={handleSaveModal} className="px-12 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-black hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-slate-900/10">
+                  <Save size={18}/> {isZh ? (isEditMode ? '保存修改' : '确认入库') : (isEditMode ? '保存修改' : '确认入库')}
                 </button>
              </footer>
           </div>
