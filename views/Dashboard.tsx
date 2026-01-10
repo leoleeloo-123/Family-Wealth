@@ -140,7 +140,7 @@ const DashboardView: React.FC = () => {
           </div>
         </div>
 
-        {/* Card 2: Perspective (Member Filter) - Now Dynamic */}
+        {/* Card 2: Perspective (Member Filter) - Dynamic Scaling */}
         <div className="rounded-[24px] sm:rounded-[28px] py-3 sm:py-4 px-4 sm:px-6 bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg hover:shadow-2xl transition-all duration-500 flex items-center gap-3 sm:gap-4 xl:min-w-[240px]">
           <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center bg-slate-900/5 text-slate-500 flex-shrink-0">
             <User size={16} sm:size={20} />
