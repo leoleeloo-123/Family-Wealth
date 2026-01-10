@@ -319,7 +319,7 @@ const RecordsView: React.FC = () => {
                       </p>
                     </td>
                     <td className="px-12 py-8">
-                      <div className="flex justify-center gap-4 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                      <div className="flex justify-center gap-4 transition-all">
                         <button className="w-10 h-10 bg-emerald-50 shadow-sm rounded-xl flex items-center justify-center text-emerald-500 hover:bg-emerald-100 transition-all hover:scale-110 border border-emerald-100">
                           <Edit2 size={16}/>
                         </button>
