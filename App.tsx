@@ -16,7 +16,6 @@ import DashboardView from './views/Dashboard.tsx';
 import RecordsView from './views/Records.tsx';
 import MasterDataView from './views/MasterData.tsx';
 import DataManagementView from './views/DataManagement.tsx';
-import SettingsView from './views/Settings.tsx';
 
 const BrandLogoSVG = () => (
   <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-2xl" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -50,12 +49,9 @@ const NavItem: React.FC<{
   <button
     onClick={() => setActiveTab(item.id as any)}
     className={`flex items-center transition-all duration-300 group ${
-      // Desktop Styles: Use flex-none to prevent vertical expansion
       'sm:flex-none sm:mb-3 ' + 
       (isSidebarOpen ? 'sm:px-8 sm:py-5 sm:rounded-[24px] sm:w-full sm:justify-start' : 'sm:p-0 sm:h-16 sm:w-16 sm:mx-auto sm:rounded-2xl sm:justify-center') +
-      // Mobile Styles: Keep flex-1 for balanced bottom nav
       ' flex-1 flex-col sm:flex-row justify-center p-2 rounded-xl ' +
-      // Active Styles
       (activeTab === item.id 
         ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/30 sm:scale-[1.02] backdrop-blur-md' 
         : 'hover:bg-white/40 text-slate-700 hover:text-slate-900')
@@ -79,14 +75,14 @@ interface AppContextType {
   settings: AppSettings;
   setSettings: React.Dispatch<React.SetStateAction<AppSettings>>;
   generateId: (prefix: string) => string;
-  setActiveTab: (tab: 'Dashboard' | 'Records' | 'MasterData' | 'DataManagement' | 'Settings') => void;
+  setActiveTab: (tab: 'Dashboard' | 'Records' | 'MasterData' | 'DataManagement') => void;
 }
 
 export const AppContext = createContext<AppContextType | null>(null);
 
 const App: React.FC = () => {
   const [data, setData] = useState<AppData>(INITIAL_APP_DATA);
-  const [activeTab, setActiveTab] = useState<'Dashboard' | 'Records' | 'MasterData' | 'DataManagement' | 'Settings'>('Dashboard');
+  const [activeTab, setActiveTab] = useState<'Dashboard' | 'Records' | 'MasterData' | 'DataManagement'>('Dashboard');
   const [settings, setSettings] = useState<AppSettings>(() => {
     const saved = localStorage.getItem('family_asset_settings');
     return saved ? JSON.parse(saved) : {
@@ -114,8 +110,7 @@ const App: React.FC = () => {
     { id: 'Dashboard', label: settings.language === 'en' ? 'Dashboard' : '仪表盘', icon: <LayoutDashboard strokeWidth={2.5} /> },
     { id: 'Records', label: settings.language === 'en' ? 'Records' : '历史记录', icon: <History strokeWidth={2.5} /> },
     { id: 'MasterData', label: settings.language === 'en' ? 'Master Data' : '基础数据', icon: <Database strokeWidth={2.5} /> },
-    { id: 'DataManagement', label: settings.language === 'en' ? 'Data Management' : '数据管理', icon: <FileSpreadsheet strokeWidth={2.5} /> },
-    { id: 'Settings', label: settings.language === 'en' ? 'Settings' : '系统设置', icon: <SettingsIcon strokeWidth={2.5} /> },
+    { id: 'DataManagement', label: settings.language === 'en' ? 'Data & Settings' : '数据与设置', icon: <FileSpreadsheet strokeWidth={2.5} /> },
   ];
 
   const fontSizeStyles = {
@@ -130,7 +125,6 @@ const App: React.FC = () => {
         className="flex flex-col-reverse sm:flex-row h-screen w-full p-2 sm:p-4 gap-2 sm:gap-4 overflow-hidden transition-all duration-500"
         style={{ fontSize: fontSizeStyles }}
       >
-        {/* Glass Navigation - Adaptive Sidebar/BottomBar */}
         <aside className={`${
           isSidebarOpen ? 'sm:w-96' : 'sm:w-28'
         } w-full flex-shrink-0 glass-sidebar rounded-[24px] sm:rounded-[40px] transition-all duration-500 flex flex-row sm:flex-col shadow-2xl relative z-30`}>
@@ -149,7 +143,6 @@ const App: React.FC = () => {
             </div>
           </div>
           
-          {/* Vertical items on desktop, horizontal on mobile */}
           <nav className={`flex-1 flex flex-row sm:flex-col items-center justify-around sm:justify-start sm:mt-4 p-2 sm:p-6 overflow-x-auto no-scrollbar`}>
             {mainMenuItems.map((item) => (
               <NavItem key={item.id} item={item} activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
@@ -176,7 +169,6 @@ const App: React.FC = () => {
             {activeTab === 'Records' && <RecordsView />}
             {activeTab === 'MasterData' && <MasterDataView />}
             {activeTab === 'DataManagement' && <DataManagementView />}
-            {activeTab === 'Settings' && <SettingsView />}
           </div>
         </main>
       </div>
