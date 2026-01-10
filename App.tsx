@@ -19,19 +19,55 @@ import DataManagementView from './views/DataManagement.tsx';
 import SettingsView from './views/Settings.tsx';
 
 const BrandLogoSVG = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-2xl" fill="none" xmlns="http://www.w3.org/2000/svg">
     <defs>
-      <linearGradient id="coinGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" stopColor="#FDE68A" />
-        <stop offset="100%" stopColor="#F59E0B" />
+        <stop offset="45%" stopColor="#F59E0B" />
+        <stop offset="100%" stopColor="#B45309" />
+      </linearGradient>
+      <linearGradient id="highlightGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="white" stopOpacity="0.9" />
+        <stop offset="50%" stopColor="white" stopOpacity="0.1" />
+        <stop offset="100%" stopColor="white" stopOpacity="0" />
       </linearGradient>
     </defs>
-    <circle cx="55" cy="30" r="18" fill="url(#coinGrad)" />
-    <text x="55" y="37" fill="white" fontSize="20" fontWeight="900" textAnchor="middle" fontFamily="sans-serif">$</text>
-    <rect x="15" y="42" width="70" height="48" rx="12" fill="#0F172A" />
-    <rect x="15" y="48" width="62" height="38" rx="10" fill="rgba(255,255,255,0.9)" />
-    <rect x="58" y="58" width="28" height="22" rx="8" fill="#10B981" />
-    <circle cx="68" cy="69" r="3.5" fill="white" />
+    
+    <circle cx="50" cy="50" r="48" fill="rgba(251, 191, 36, 0.15)" filter="blur(4px)" />
+    <circle cx="50" cy="50" r="45" fill="url(#goldGrad)" stroke="#92400E" strokeWidth="0.5" />
+    <circle cx="50" cy="50" r="39" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" />
+    
+    <text 
+      x="50" 
+      y="69" 
+      fill="#78350F" 
+      fontSize="62" 
+      fontWeight="900" 
+      textAnchor="middle" 
+      fontFamily="system-ui, sans-serif"
+      style={{ opacity: 0.4 }}
+    >
+      $
+    </text>
+    <text 
+      x="50" 
+      y="67" 
+      fill="white" 
+      fontSize="62" 
+      fontWeight="900" 
+      textAnchor="middle" 
+      fontFamily="system-ui, sans-serif"
+      style={{ filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.15))' }}
+    >
+      $
+    </text>
+    
+    <path 
+      d="M18 42 Q 50 15 82 42 Q 50 30 18 42 Z" 
+      fill="url(#highlightGrad)" 
+      opacity="0.7"
+    />
+    <circle cx="50" cy="50" r="44.5" fill="none" stroke="white" strokeWidth="0.75" strokeOpacity="0.3" />
   </svg>
 );
 
@@ -44,7 +80,9 @@ const NavItem: React.FC<{
 }> = ({ item, activeTab, setActiveTab, theme, isSidebarOpen }) => (
   <button
     onClick={() => setActiveTab(item.id as any)}
-    className={`w-full flex items-center p-4 rounded-2xl transition-all duration-300 group mb-3 ${
+    className={`w-full flex items-center transition-all duration-300 group mb-3 ${
+      isSidebarOpen ? 'p-4 rounded-2xl' : 'p-0 h-16 w-16 mx-auto rounded-2xl justify-center'
+    } ${
       activeTab === item.id 
         ? 'bg-blue-600/90 text-white shadow-xl shadow-blue-500/30 scale-[1.02] backdrop-blur-md' 
         : 'hover:bg-white/40 text-slate-700 hover:text-slate-900'
@@ -53,7 +91,7 @@ const NavItem: React.FC<{
     <div className={`transition-transform duration-500 ${activeTab === item.id ? 'rotate-[10deg]' : 'group-hover:scale-110'}`}>
       {item.icon}
     </div>
-    {isSidebarOpen && <span className="ml-5 font-black text-[17px] tracking-tight">{item.label}</span>}
+    {isSidebarOpen && <span className="ml-5 font-black text-[17px] tracking-tight whitespace-nowrap">{item.label}</span>}
   </button>
 );
 
@@ -100,29 +138,33 @@ const App: React.FC = () => {
       <div className="flex h-screen w-full p-4 gap-4 overflow-hidden">
         {/* Glass Sidebar */}
         <aside className={`${isSidebarOpen ? 'w-80' : 'w-24'} glass-sidebar rounded-[32px] transition-all duration-500 flex flex-col shadow-2xl relative z-30`}>
-          <div className="p-8 flex items-center justify-between overflow-hidden">
-            <div className="flex items-center gap-4">
+          <div className="p-8 flex items-center overflow-hidden">
+            <div className={`flex items-center transition-all duration-500 ${isSidebarOpen ? 'gap-4' : 'justify-center w-full'}`}>
               <div className="w-14 h-14 flex-shrink-0 flex items-center justify-center relative">
                 {!useExternalLogo && <BrandLogoSVG />}
                 <img src="logo.png" alt="L" className={`max-w-full max-h-full object-contain absolute inset-0 transition-opacity ${useExternalLogo ? 'opacity-100' : 'opacity-0'}`} onLoad={() => setUseExternalLogo(true)} onError={() => setUseExternalLogo(false)} />
               </div>
-              <h1 className={`font-black text-2xl tracking-tighter text-slate-800 transition-all duration-500 ${!isSidebarOpen ? 'opacity-0 scale-50' : 'opacity-100 scale-100'}`}>
-                Assets
-              </h1>
+              {isSidebarOpen && (
+                <h1 className="font-black text-2xl tracking-tighter text-slate-800 animate-in fade-in slide-in-from-left-4 duration-500">
+                  Assets
+                </h1>
+              )}
             </div>
           </div>
           
-          <nav className="flex-1 px-5 mt-4 overflow-y-auto">
+          <nav className={`flex-1 mt-4 overflow-y-auto ${isSidebarOpen ? 'px-5' : 'px-0'}`}>
             {mainMenuItems.map((item) => (
               <NavItem key={item.id} item={item} activeTab={activeTab} setActiveTab={setActiveTab} theme={settings.theme} isSidebarOpen={isSidebarOpen} />
             ))}
           </nav>
 
-          <div className="p-5 mt-auto flex flex-col gap-4">
+          <div className={`p-5 mt-auto flex flex-col gap-4 ${!isSidebarOpen ? 'items-center' : ''}`}>
             <NavItem item={{ id: 'Settings', label: 'Settings', icon: <SettingsIcon size={24} strokeWidth={2.5} /> }} activeTab={activeTab} setActiveTab={setActiveTab} theme={settings.theme} isSidebarOpen={isSidebarOpen} />
-            <div className={`p-4 rounded-3xl bg-white/30 text-center transition-all ${!isSidebarOpen ? 'opacity-0 h-0 p-0 overflow-hidden' : 'opacity-100'}`}>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Protocol v2.0</p>
-            </div>
+            {isSidebarOpen && (
+              <div className="p-4 rounded-3xl bg-white/30 text-center transition-all">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Protocol v2.0</p>
+              </div>
+            )}
           </div>
 
           <button onClick={() => setSidebarOpen(!isSidebarOpen)} className="absolute -right-3 top-20 bg-white/80 backdrop-blur-md border border-white/40 rounded-full p-1 shadow-lg text-slate-400 hover:text-blue-600 transition-colors z-50">
