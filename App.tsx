@@ -68,51 +68,67 @@ const App: React.FC = () => {
   }, []);
 
   const menuItems = [
-    { id: 'Dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
-    { id: 'Records', label: 'Records', icon: <History size={20} /> },
-    { id: 'MasterData', label: 'Master Data', icon: <Database size={20} /> },
-    { id: 'DataManagement', label: 'Data Management', icon: <FileSpreadsheet size={20} /> },
-    { id: 'Settings', label: 'Settings', icon: <SettingsIcon size={20} /> },
+    { id: 'Dashboard', label: 'Dashboard', icon: <LayoutDashboard size={22} /> },
+    { id: 'Records', label: 'Records', icon: <History size={22} /> },
+    { id: 'MasterData', label: 'Master Data', icon: <Database size={22} /> },
+    { id: 'DataManagement', label: 'Data Management', icon: <FileSpreadsheet size={22} /> },
+    { id: 'Settings', label: 'Settings', icon: <SettingsIcon size={22} /> },
   ];
 
   return (
     <AppContext.Provider value={{ data, setData, settings, setSettings, generateId }}>
       <div className={`flex h-screen ${settings.theme === 'dark' ? 'bg-slate-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
         {/* Sidebar */}
-        <aside className={`${isSidebarOpen ? 'w-64' : 'w-20'} border-r transition-all duration-300 flex flex-col ${settings.theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'}`}>
-          <div className="p-4 flex items-center justify-between">
-            <h1 className={`font-bold text-xl truncate ${!isSidebarOpen && 'hidden'}`}>Family Assets</h1>
-            <button onClick={() => setSidebarOpen(!isSidebarOpen)} className="p-2 hover:bg-gray-100 rounded">
+        <aside className={`${isSidebarOpen ? 'w-72' : 'w-20'} border-r transition-all duration-300 flex flex-col ${settings.theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'}`}>
+          <div className="p-5 flex items-center justify-between overflow-hidden">
+            <div className="flex items-center gap-3 overflow-hidden">
+              <img 
+                src="logo.png" 
+                alt="Logo" 
+                className="w-10 h-10 flex-shrink-0 object-contain drop-shadow-sm" 
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+              <h1 className={`font-black text-xl tracking-tight truncate transition-all duration-300 ${!isSidebarOpen ? 'w-0 opacity-0 pointer-events-none' : 'w-auto opacity-100'}`}>
+                Family Assets
+              </h1>
+            </div>
+            <button onClick={() => setSidebarOpen(!isSidebarOpen)} className="p-2 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors">
               {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
           </div>
-          <nav className="flex-1 px-2 space-y-2 mt-4">
+          
+          <nav className="flex-1 px-4 space-y-2 mt-6">
             {menuItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id as any)}
-                className={`w-full flex items-center p-3 rounded-lg transition-colors ${
+                className={`w-full flex items-center p-3.5 rounded-2xl transition-all duration-200 group ${
                   activeTab === item.id 
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' 
-                    : settings.theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-100'
+                    ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/30' 
+                    : settings.theme === 'dark' ? 'hover:bg-slate-700 text-slate-400 hover:text-white' : 'hover:bg-gray-100 text-gray-500 hover:text-gray-900'
                 }`}
               >
-                {item.icon}
-                {isSidebarOpen && <span className="ml-3 font-medium">{item.label}</span>}
+                <div className={`transition-transform duration-200 ${activeTab === item.id ? 'scale-110' : 'group-hover:scale-110'}`}>
+                  {item.icon}
+                </div>
+                {isSidebarOpen && <span className="ml-4 font-bold text-[16px] tracking-tight">{item.label}</span>}
               </button>
             ))}
           </nav>
-          <div className="p-4 border-t border-gray-100 text-xs text-gray-400">
-            {isSidebarOpen ? 'v1.0 Local Only' : 'v1.0'}
+
+          <div className="p-6 border-t border-gray-100/50 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] text-center">
+            {isSidebarOpen ? 'SYSTEM VERSION 1.0' : 'V1.0'}
           </div>
         </aside>
 
         {/* Main Content */}
         <main className="flex-1 flex flex-col overflow-hidden">
           <header className={`h-16 flex items-center px-8 border-b ${settings.theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'}`}>
-             <h2 className="text-lg font-semibold">{menuItems.find(m => m.id === activeTab)?.label}</h2>
+             <h2 className="text-xl font-black text-slate-800 tracking-tight">{menuItems.find(m => m.id === activeTab)?.label}</h2>
              <div className="ml-auto flex items-center gap-4">
-                <div className="text-sm font-medium px-3 py-1 bg-blue-50 text-blue-600 rounded-full">
+                <div className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 bg-blue-50 text-blue-600 rounded-full border border-blue-100 shadow-sm">
                   Base: {settings.baseCurrency}
                 </div>
              </div>
