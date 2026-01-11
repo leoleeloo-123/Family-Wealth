@@ -83,7 +83,8 @@ const DashboardView: React.FC = () => {
       const latest = records[0];
       const value = latest ? Number(latest.估值) || 0 : Number(asset.购入价格) || 0;
       const converted = value * getExchangeRate(asset.币种, displayCurrency);
-      return { 账户昵称: asset.资产昵称, value, converted, member: asset.成员昵称, type: 'fixed' };
+      // Added 成员ID to the return object to fix the type error when calculating memberData
+      return { 账户昵称: asset.资产昵称, value, converted, member: asset.成员昵称, 成员ID: asset.成员ID, type: 'fixed' };
     });
 
     let loansList = data.借入借出记录.filter(l => l.结清 !== '是');
@@ -94,11 +95,13 @@ const DashboardView: React.FC = () => {
       const isBorrowing = l.借入借出 === '借入';
       const rawValue = Number(l.借款额) || 0;
       const converted = rawValue * getExchangeRate(l.币种, displayCurrency);
+      // Added 成员ID to the return object to fix the type error when calculating memberData
       return {
         账户昵称: l.借款对象,
         value: isBorrowing ? -rawValue : rawValue,
         converted: isBorrowing ? -converted : converted,
         member: l.成员昵称,
+        成员ID: l.成员ID,
         type: 'loan',
         isLiability: isBorrowing
       };
@@ -115,7 +118,7 @@ const DashboardView: React.FC = () => {
 
     const memberData = data.成员.map(m => {
       const val = [...latestLiquidByAccount, ...latestFixedByAsset, ...loanEntries]
-        .filter(a => a.成员ID === m.成员ID || a.member === m.成员昵称)
+        .filter((a: any) => a.成员ID === m.成员ID || a.member === m.成员昵称)
         .reduce((s, i) => s + i.converted, 0);
       return { name: String(m.成员昵称), value: Math.max(0, val) };
     }).filter(m => m.value > 0);
