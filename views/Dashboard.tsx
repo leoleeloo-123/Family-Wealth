@@ -1,8 +1,8 @@
 
 import React, { useContext, useMemo, useState } from 'react';
 import { AppContext } from '../App';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Wallet, Home, Landmark, Globe, User, Filter } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { TrendingUp, Wallet, Home, Landmark, Globe, User, Filter, PieChart as PieIcon } from 'lucide-react';
 
 const DashboardView: React.FC = () => {
   const context = useContext(AppContext);
@@ -107,8 +107,9 @@ const DashboardView: React.FC = () => {
       const institution = data.机构.find(inst => inst.机构ID === acc.机构ID);
       const color = institution?.代表色HEX || '#64748b';
       const char = (institution?.机构名称?.[0] || acc.账户昵称[0] || '?').toUpperCase();
+      const riskLevel = acc.风险评估 || (isZh ? '未知' : 'Unknown');
 
-      return { 账户昵称: acc.账户昵称, value, converted, member: acc.成员昵称, 成员ID: acc.成员ID, type: 'liquid', time, color, char };
+      return { 账户昵称: acc.账户昵称, value, converted, member: acc.成员昵称, 成员ID: acc.成员ID, type: 'liquid', time, color, char, riskLevel };
     });
 
     // 2. Process Fixed Assets (Latest record per asset)
@@ -181,38 +182,50 @@ const DashboardView: React.FC = () => {
       .sort((a, b) => Math.abs(b.converted) - Math.abs(a.converted))
       .slice(0, 15);
 
-    const memberData = data.成员.map(m => {
-      const val = [...latestLiquidByAccount, ...latestFixedByAsset, ...loanEntries]
-        .filter((a: any) => a.成员ID === m.成员ID || a.member === m.成员昵称)
-        .reduce((s, i) => s + i.converted, 0);
-      return { name: String(m.成员昵称), value: Math.max(0, val) };
-    }).filter(m => m.value > 0);
+    // Calculate Liquid Risk Data
+    const riskGroups = new Map<string, number>();
+    latestLiquidByAccount.forEach(item => {
+      if (item.converted <= 0) return; // Skip zero/liabilities for risk pie if needed, but normally liquid liabilities (CC) are risky
+      const risk = item.riskLevel;
+      riskGroups.set(risk, (riskGroups.get(risk) || 0) + item.converted);
+    });
+    const riskData = Array.from(riskGroups.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
 
-    return { netWorth, liquidTotal, fixedTotal, loanNet, memberData, snapshots };
-  }, [data, displayCurrency, selectedMemberId, exchangeRatesMap, snapshotTypeFilter]);
+    return { netWorth, liquidTotal, fixedTotal, loanNet, riskData, snapshots };
+  }, [data, displayCurrency, selectedMemberId, exchangeRatesMap, snapshotTypeFilter, isZh]);
 
-  const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
+  // Risk related colors
+  const RISK_COLORS: Record<string, string> = {
+    'Low': '#10b981', '低': '#10b981',
+    'Medium': '#f59e0b', '中': '#f59e0b',
+    'High': '#ef4444', '高': '#ef4444',
+    'Very High': '#7f1d1d', '极高': '#7f1d1d',
+    'Unknown': '#94a3b8', '未知': '#94a3b8'
+  };
+  const DEFAULT_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
 
   return (
-    <div className="space-y-6 sm:space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="flex flex-col xl:flex-row items-stretch gap-6 sm:gap-8">
+    <div className="space-y-4 sm:space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="flex flex-col xl:flex-row items-stretch gap-4 sm:gap-6">
         
-        {/* Currency Selection & Rates Row */}
-        <div className="flex-1 rounded-[24px] lg:rounded-[36px] py-6 px-8 bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg flex flex-col md:flex-row md:items-center gap-8 min-h-[100px]">
-          <div className="flex items-center gap-4 bg-blue-600/10 px-6 py-4 rounded-[24px] text-blue-600 border border-blue-600/20 shadow-inner group/curr flex-shrink-0">
-            <Globe size={28} strokeWidth={2.5} />
-            <select value={displayCurrency} onChange={(e) => setDisplayCurrency(e.target.value)} className="bg-transparent border-none outline-none font-black text-xl lg:text-3xl tracking-widest cursor-pointer appearance-none">
+        {/* Currency Selection & Rates Row - Reduced Padding */}
+        <div className="flex-1 rounded-[24px] lg:rounded-[32px] py-4 px-6 bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg flex flex-col md:flex-row md:items-center gap-6 min-h-[80px]">
+          <div className="flex items-center gap-3 bg-blue-600/10 px-4 py-2.5 rounded-[18px] text-blue-600 border border-blue-600/20 shadow-inner group/curr flex-shrink-0">
+            <Globe size={24} strokeWidth={2.5} />
+            <select value={displayCurrency} onChange={(e) => setDisplayCurrency(e.target.value)} className="bg-transparent border-none outline-none font-black text-lg lg:text-2xl tracking-widest cursor-pointer appearance-none">
               {availableCurrencies.map(curr => <option key={curr} value={curr}>{curr}</option>)}
             </select>
           </div>
 
-          <div className="flex-1 flex items-center gap-6 overflow-x-auto no-scrollbar py-2">
+          <div className="flex-1 flex items-center gap-4 overflow-x-auto no-scrollbar py-1">
             {availableCurrencies.filter(c => c !== displayCurrency).map(curr => {
               const rateToDisplay = exchangeRatesMap[curr] || 0;
               return (
-                <div key={curr} className="flex items-center gap-4 bg-white/60 px-6 py-4 rounded-[24px] border border-white/80 flex-shrink-0 shadow-sm hover:scale-105 transition-transform">
-                  <span className="text-[12px] lg:text-[16px] font-black text-slate-400">{curr}</span>
-                  <span className="text-lg lg:text-2xl font-black text-slate-800">
+                <div key={curr} className="flex items-center gap-3 bg-white/60 px-4 py-2.5 rounded-[18px] border border-white/80 flex-shrink-0 shadow-sm hover:scale-105 transition-transform">
+                  <span className="text-[10px] lg:text-[13px] font-black text-slate-400">{curr}</span>
+                  <span className="text-base lg:text-xl font-black text-slate-800">
                     {rateToDisplay > 0 ? rateToDisplay.toFixed(3) : '--'}
                   </span>
                 </div>
@@ -221,12 +234,12 @@ const DashboardView: React.FC = () => {
           </div>
         </div>
 
-        {/* Perspective Selection */}
-        <div className="rounded-[24px] lg:rounded-[36px] py-6 px-10 bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg flex items-center gap-6 xl:min-w-[360px]">
-          <div className="w-16 h-16 rounded-[24px] flex items-center justify-center bg-slate-900/5 text-slate-500 flex-shrink-0"><User size={32} /></div>
+        {/* Perspective Selection - Reduced Padding */}
+        <div className="rounded-[24px] lg:rounded-[32px] py-4 px-8 bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg flex items-center gap-4 xl:min-w-[300px]">
+          <div className="w-12 h-12 rounded-[18px] flex items-center justify-center bg-slate-900/5 text-slate-500 flex-shrink-0"><User size={24} /></div>
           <div className="flex-1 min-w-0">
-            <p className="text-[11px] lg:text-[14px] font-black text-slate-400 uppercase tracking-widest mb-1 leading-none">Perspective</p>
-            <select value={selectedMemberId} onChange={(e) => setSelectedMemberId(e.target.value)} className="w-full bg-transparent border-none outline-none font-black text-slate-800 text-xl lg:text-3xl py-1 pr-6 appearance-none cursor-pointer truncate">
+            <p className="text-[10px] lg:text-[12px] font-black text-slate-400 uppercase tracking-widest mb-0.5 leading-none">Perspective</p>
+            <select value={selectedMemberId} onChange={(e) => setSelectedMemberId(e.target.value)} className="w-full bg-transparent border-none outline-none font-black text-slate-800 text-lg lg:text-2xl py-0.5 pr-6 appearance-none cursor-pointer truncate">
               <option value="all">{isZh ? '全体成员' : 'All Members'}</option>
               {data.成员.map(m => <option key={m.成员ID} value={m.成员ID}>{m.成员昵称}</option>)}
             </select>
@@ -234,38 +247,51 @@ const DashboardView: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-8 lg:gap-10">
-        <StatCard label={isZh ? "净资产" : "Net Worth"} value={calculations.netWorth} currency={displayCurrency} icon={<TrendingUp size={32} />} grad="from-blue-500/20 to-indigo-500/10" text="text-indigo-600" />
-        <StatCard label={isZh ? "流动资产" : "Liquid"} value={calculations.liquidTotal} currency={displayCurrency} icon={<Wallet size={32} />} grad="from-emerald-500/20 to-teal-500/10" text="text-emerald-600" />
-        <StatCard label={isZh ? "固定资产" : "Fixed"} value={calculations.fixedTotal} currency={displayCurrency} icon={<Home size={32} />} grad="from-orange-500/20 to-amber-500/10" text="text-amber-600" />
-        <StatCard label={isZh ? "债务净额" : "Net Loans"} value={calculations.loanNet} currency={displayCurrency} icon={<Landmark size={32} />} grad="from-pink-500/20 to-purple-500/10" text="text-purple-600" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6">
+        <StatCard label={isZh ? "净资产" : "Net Worth"} value={calculations.netWorth} currency={displayCurrency} icon={<TrendingUp size={24} />} grad="from-blue-500/20 to-indigo-500/10" text="text-indigo-600" />
+        <StatCard label={isZh ? "流动资产" : "Liquid"} value={calculations.liquidTotal} currency={displayCurrency} icon={<Wallet size={24} />} grad="from-emerald-500/20 to-teal-500/10" text="text-emerald-600" />
+        <StatCard label={isZh ? "固定资产" : "Fixed"} value={calculations.fixedTotal} currency={displayCurrency} icon={<Home size={24} />} grad="from-orange-500/20 to-amber-500/10" text="text-amber-600" />
+        <StatCard label={isZh ? "债务净额" : "Net Loans"} value={calculations.loanNet} currency={displayCurrency} icon={<Landmark size={24} />} grad="from-pink-500/20 to-purple-500/10" text="text-purple-600" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 lg:gap-14">
-        <div className="p-10 lg:p-14 rounded-[48px] bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg">
-          <h3 className="text-2xl lg:text-4xl font-black mb-10 text-slate-800 tracking-tight">{isZh ? '资产分布' : 'Asset Distribution'}</h3>
-          <div className="h-80 lg:h-[450px]">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-10">
+        <div className="p-8 lg:p-10 rounded-[40px] bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="p-2.5 bg-blue-600/10 text-blue-600 rounded-xl"><PieIcon size={20} /></div>
+            <h3 className="text-xl lg:text-3xl font-black text-slate-800 tracking-tight">{isZh ? '流动资产风险占比' : 'Liquid Risk Profile'}</h3>
+          </div>
+          <div className="h-72 lg:h-[380px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={calculations.memberData} innerRadius={100} outerRadius={140} paddingAngle={10} dataKey="value" stroke="none">
-                  {calculations.memberData.map((_, index) => <Cell key={index} fill={COLORS[index % COLORS.length]} cornerRadius={16} />)}
+                <Pie data={calculations.riskData} innerRadius={80} outerRadius={120} paddingAngle={8} dataKey="value" stroke="none">
+                  {calculations.riskData.map((entry, index) => (
+                    <Cell 
+                      key={index} 
+                      fill={RISK_COLORS[entry.name] || DEFAULT_COLORS[index % DEFAULT_COLORS.length]} 
+                      cornerRadius={12} 
+                    />
+                  ))}
                 </Pie>
-                <Tooltip contentStyle={{ borderRadius: '32px', border: 'none', boxShadow: '0 25px 30px -5px rgba(0,0,0,0.1)', padding: '24px', fontWeight: '900' }} />
+                <Tooltip 
+                  formatter={(value: number) => [Math.round(value).toLocaleString() + ' ' + displayCurrency, isZh ? '价值' : 'Value']}
+                  contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', padding: '16px', fontWeight: '900' }} 
+                />
+                <Legend iconType="circle" verticalAlign="bottom" height={36}/>
               </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="lg:col-span-2 p-10 lg:p-14 rounded-[48px] bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg overflow-hidden">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
-            <h3 className="text-2xl lg:text-4xl font-black text-slate-800 tracking-tight">{isZh ? '核心资产快照' : 'Snapshot Highlights'}</h3>
+        <div className="lg:col-span-2 p-8 lg:p-10 rounded-[40px] bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg overflow-hidden">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+            <h3 className="text-xl lg:text-3xl font-black text-slate-800 tracking-tight">{isZh ? '核心资产快照' : 'Snapshot Highlights'}</h3>
             
-            <div className="flex items-center gap-4 bg-slate-900/5 px-6 py-3 rounded-2xl border border-slate-900/10">
-              <Filter size={18} className="text-slate-400" />
+            <div className="flex items-center gap-3 bg-slate-900/5 px-5 py-2.5 rounded-xl border border-slate-900/10">
+              <Filter size={16} className="text-slate-400" />
               <select 
                 value={snapshotTypeFilter} 
                 onChange={(e) => setSnapshotTypeFilter(e.target.value as any)}
-                className="bg-transparent border-none outline-none font-black text-slate-600 text-sm lg:text-base appearance-none cursor-pointer"
+                className="bg-transparent border-none outline-none font-black text-slate-600 text-xs lg:text-sm appearance-none cursor-pointer"
               >
                 <option value="all">{isZh ? '全部类型' : 'All Types'}</option>
                 <option value="liquid">{isZh ? '流动资产' : 'Liquid Only'}</option>
@@ -276,54 +302,51 @@ const DashboardView: React.FC = () => {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-separate border-spacing-y-6">
+            <table className="w-full text-left border-separate border-spacing-y-4">
               <thead>
-                <tr className="text-[12px] lg:text-[15px] uppercase tracking-[0.3em] text-slate-400">
-                  <th className="pb-4 px-8">{isZh ? '项目' : 'Account'}</th>
-                  <th className="pb-4 px-8">{isZh ? '最后更新' : 'Updated'}</th>
-                  <th className="pb-4 px-8 text-right">{isZh ? '折算数值' : 'Valuation'}</th>
+                <tr className="text-[10px] lg:text-[13px] uppercase tracking-[0.2em] text-slate-400">
+                  <th className="pb-2 px-6">{isZh ? '项目' : 'Account'}</th>
+                  <th className="pb-2 px-6">{isZh ? '最后更新' : 'Updated'}</th>
+                  <th className="pb-2 px-6 text-right">{isZh ? '折算数值' : 'Valuation'}</th>
                 </tr>
               </thead>
-              <tbody className="text-sm lg:text-2xl">
+              <tbody className="text-xs lg:text-xl">
                 {calculations.snapshots.map((acc, i) => (
-                  <tr key={i} className="bg-white/20 hover:bg-white/50 transition-all rounded-[32px] overflow-hidden group">
-                    <td className="py-7 lg:py-9 px-8 font-black text-slate-700 rounded-l-[32px] whitespace-nowrap">
-                      <div className="flex items-center gap-4 sm:gap-6">
-                        {/* Rounded Square Logo Element */}
+                  <tr key={i} className="bg-white/20 hover:bg-white/50 transition-all rounded-[24px] overflow-hidden group">
+                    <td className="py-5 lg:py-6 px-6 font-black text-slate-700 rounded-l-[24px] whitespace-nowrap">
+                      <div className="flex items-center gap-4 sm:gap-5">
                         <div 
-                          className="w-10 h-10 lg:w-14 lg:h-14 rounded-[12px] lg:rounded-[20px] shadow-md flex items-center justify-center text-white font-black text-base lg:text-xl select-none flex-shrink-0" 
+                          className="w-8 h-8 lg:w-12 lg:h-12 rounded-[10px] lg:rounded-[16px] shadow-sm flex items-center justify-center text-white font-black text-xs lg:text-base select-none flex-shrink-0" 
                           style={{ backgroundColor: (acc as any).color }} 
-                          title={isZh ? "关联机构色" : "Institution Color"}
                         >
                           {(acc as any).char}
                         </div>
                         
-                        {/* Nickname & Label in one horizontal row */}
-                        <div className="flex items-center gap-4">
-                          <span className="font-black text-slate-900 text-base lg:text-2xl tracking-tight">
+                        <div className="flex items-center gap-3">
+                          <span className="font-black text-slate-900 text-sm lg:text-xl tracking-tight">
                             {String(acc.账户昵称)}
                           </span>
-                          <span className={`text-[9px] lg:text-[11px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md flex-shrink-0 ${acc.type === 'liquid' ? 'bg-blue-100 text-blue-600' : acc.type === 'fixed' ? 'bg-amber-100 text-amber-600' : 'bg-purple-100 text-purple-600'}`}>
+                          <span className={`text-[8px] lg:text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md flex-shrink-0 ${acc.type === 'liquid' ? 'bg-blue-100 text-blue-600' : acc.type === 'fixed' ? 'bg-amber-100 text-amber-600' : 'bg-purple-100 text-purple-600'}`}>
                             {acc.type === 'liquid' ? (isZh ? '流动' : 'LIQ') : acc.type === 'fixed' ? (isZh ? '固定' : 'FIX') : (isZh ? '债务' : 'DBT')}
                           </span>
                         </div>
                       </div>
                     </td>
-                    <td className="py-7 lg:py-9 px-8 text-slate-400 whitespace-nowrap font-bold text-xs lg:text-base uppercase tracking-widest">
+                    <td className="py-5 lg:py-6 px-6 text-slate-400 whitespace-nowrap font-bold text-[10px] lg:text-sm uppercase tracking-widest">
                       {String((acc as any).time)}
                     </td>
-                    <td className="py-7 lg:py-9 px-8 text-right rounded-r-[32px] whitespace-nowrap">
-                       <span className={`font-black tracking-tighter text-2xl lg:text-4xl ${(acc as any).isLiability || acc.converted < 0 ? 'text-rose-600' : 'text-blue-600'}`}>
+                    <td className="py-5 lg:py-6 px-6 text-right rounded-r-[24px] whitespace-nowrap">
+                       <span className={`font-black tracking-tighter text-lg lg:text-3xl ${(acc as any).isLiability || acc.converted < 0 ? 'text-rose-600' : 'text-blue-600'}`}>
                          {Math.round(acc.converted).toLocaleString()}
                        </span>
-                       <span className="ml-4 text-[12px] lg:text-[16px] font-black text-slate-400 uppercase tracking-widest">{displayCurrency}</span>
+                       <span className="ml-3 text-[10px] lg:text-[14px] font-black text-slate-400 uppercase tracking-widest">{displayCurrency}</span>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
             {calculations.snapshots.length === 0 && (
-              <div className="py-20 text-center opacity-20 italic font-black text-2xl">{isZh ? '暂无匹配数据' : 'No matching data.'}</div>
+              <div className="py-14 text-center opacity-20 italic font-black text-xl">{isZh ? '暂无匹配数据' : 'No matching data.'}</div>
             )}
           </div>
         </div>
@@ -332,19 +355,20 @@ const DashboardView: React.FC = () => {
   );
 };
 
+// Modified StatCard: flatter, smaller numbers, less padding
 const StatCard: React.FC<{ label: string, value: number, currency: string, icon: React.ReactNode, grad: string, text: string }> = ({ label, value, currency, icon, grad, text }) => (
-  <div className={`p-10 lg:p-12 bg-white/40 backdrop-blur-xl border border-white/60 rounded-[40px] lg:rounded-[56px] shadow-lg relative overflow-hidden flex flex-col justify-center min-h-[160px] lg:min-h-[220px] group transition-all duration-700`}>
-    <div className={`absolute -right-12 -top-12 w-48 h-48 lg:w-64 lg:h-64 bg-gradient-to-br ${grad} rounded-full blur-[80px] opacity-60 group-hover:scale-125 transition-transform duration-1000`}></div>
-    <div className="relative z-10 space-y-6">
-       <div className="flex items-center gap-5">
-          <div className={`w-14 h-14 lg:w-18 lg:h-18 rounded-[24px] flex items-center justify-center bg-white shadow-md ${text}`}>{icon}</div>
-          <p className="text-xl lg:text-3xl font-black uppercase tracking-tighter text-slate-800 opacity-90 leading-none">{label}</p>
+  <div className={`p-6 lg:p-8 bg-white/40 backdrop-blur-xl border border-white/60 rounded-[32px] lg:rounded-[44px] shadow-lg relative overflow-hidden flex flex-col justify-center min-h-[120px] lg:min-h-[160px] group transition-all duration-700`}>
+    <div className={`absolute -right-10 -top-10 w-40 h-40 lg:w-56 lg:h-56 bg-gradient-to-br ${grad} rounded-full blur-[70px] opacity-60 group-hover:scale-125 transition-transform duration-1000`}></div>
+    <div className="relative z-10 space-y-3 lg:space-y-4">
+       <div className="flex items-center gap-4">
+          <div className={`w-10 h-10 lg:w-14 lg:h-14 rounded-[16px] flex items-center justify-center bg-white shadow-md ${text}`}>{icon}</div>
+          <p className="text-base lg:text-2xl font-black uppercase tracking-tighter text-slate-800 opacity-90 leading-none">{label}</p>
        </div>
-       <div className="flex items-baseline gap-2 lg:gap-4 overflow-hidden">
-         <h4 className={`text-3xl lg:text-5xl font-black tracking-tighter leading-none ${value < 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+       <div className="flex items-baseline gap-2 lg:gap-3 overflow-hidden">
+         <h4 className={`text-2xl lg:text-4xl font-black tracking-tighter leading-none ${value < 0 ? 'text-rose-600' : 'text-slate-900'}`}>
            {value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
          </h4>
-         <span className="text-[12px] lg:text-[18px] font-black text-slate-400 tracking-widest uppercase">{currency}</span>
+         <span className="text-[10px] lg:text-[14px] font-black text-slate-400 tracking-widest uppercase">{currency}</span>
        </div>
     </div>
   </div>
