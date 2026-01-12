@@ -2,7 +2,7 @@
 import React, { useContext, useMemo, useState } from 'react';
 import { AppContext } from '../App';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Wallet, Home, Landmark, Globe, User } from 'lucide-react';
+import { TrendingUp, Wallet, Home, Landmark, Globe, User, Filter } from 'lucide-react';
 
 const DashboardView: React.FC = () => {
   const context = useContext(AppContext);
@@ -11,6 +11,8 @@ const DashboardView: React.FC = () => {
 
   const [displayCurrency, setDisplayCurrency] = useState<string>(settings.baseCurrency);
   const [selectedMemberId, setSelectedMemberId] = useState<string>('all');
+  // Defaulting to 'liquid' as requested
+  const [snapshotTypeFilter, setSnapshotTypeFilter] = useState<'all' | 'liquid' | 'fixed' | 'loan'>('liquid');
 
   const isZh = settings.language === 'zh';
 
@@ -35,59 +37,33 @@ const DashboardView: React.FC = () => {
 
   /**
    * Graph-based Exchange Rate Logic
-   * 
-   * Logic:
-   * 1. Treat currency pairs as a graph.
-   * 2. Edge Weights:
-   *    If Record is: Base=USD, Quote=CNY, Rate=7.18
-   *    Implies: 1 USD = 7.18 CNY
-   *    Edge USD -> CNY = 7.18
-   *    Edge CNY -> USD = 1/7.18
-   * 
-   * 3. BFS Traversal from DisplayCurrency (D):
-   *    We calculate `rates[C]`: How many C units equal 1 D unit.
-   *    Start: rates[D] = 1.
-   *    Traverse D -> N (weight w).
-   *    rates[N] = rates[D] * w.
    */
   const exchangeRatesMap = useMemo(() => {
     const rates: Record<string, number> = {};
     const base = displayCurrency;
     rates[base] = 1;
 
-    // Build Adjacency List
     const adj: Record<string, Record<string, number>> = {};
-    
-    // Sort by date descending to prioritize latest rates
     const sortedRates = [...data.汇率].sort((a, b) => new Date(b.时间).getTime() - new Date(a.时间).getTime());
     
     sortedRates.forEach(r => {
       const b = r.基准币种; 
       const q = r.报价币种; 
       const val = Number(r.汇率);
-      
       if (!b || !q || isNaN(val) || val === 0) return;
-      
-      // Standard FX Logic: 1 Base = Rate Quote
-      // Base -> Quote cost is Rate
       if (!adj[b]) adj[b] = {}; 
-      if (!adj[b][q]) adj[b][q] = val; // Only set if not already set (taking latest)
-
-      // Quote -> Base cost is 1/Rate
+      if (!adj[b][q]) adj[b][q] = val;
       if (!adj[q]) adj[q] = {}; 
       if (!adj[q][b]) adj[q][b] = 1 / val;
     });
 
-    // BFS to find rate relative to DisplayCurrency
     const visited = new Set<string>();
     const queue: Array<{ node: string; factor: number }> = [{ node: base, factor: 1 }];
     visited.add(base);
 
     while (queue.length > 0) {
       const { node, factor } = queue.shift()!;
-      // factor represents: How many 'node' currency units = 1 'base' currency unit
       rates[node] = factor;
-
       if (adj[node]) {
         for (const [neighbor, edgeRate] of Object.entries(adj[node])) {
           if (!visited.has(neighbor)) {
@@ -98,7 +74,6 @@ const DashboardView: React.FC = () => {
       }
     }
     
-    // Fill gaps for disconnected currencies (avoid NaN)
     availableCurrencies.forEach(c => {
       if (rates[c] === undefined) rates[c] = 0;
     });
@@ -107,16 +82,15 @@ const DashboardView: React.FC = () => {
   }, [data.汇率, displayCurrency, availableCurrencies]);
 
   const calculations = useMemo(() => {
-    // Helper to convert any amount in 'currency' to 'displayCurrency'
     const convert = (amount: number, currency: string) => {
       if (!amount) return 0;
       if (currency === displayCurrency) return amount;
       const rateFactor = exchangeRatesMap[currency];
-      // If rateFactor is 0 or undefined, we can't convert (disconnected graph)
       if (!rateFactor) return 0;
       return amount / rateFactor;
     };
 
+    // 1. Process Liquid Assets (Latest record per account)
     let accountsToCalculate = data.账户;
     if (selectedMemberId !== 'all') {
       accountsToCalculate = accountsToCalculate.filter(acc => acc.成员ID === selectedMemberId);
@@ -127,9 +101,17 @@ const DashboardView: React.FC = () => {
       const value = latest ? Number(latest.市值) || 0 : 0;
       const currency = latest ? latest.币种 : acc.币种 || displayCurrency; 
       const converted = convert(value, currency);
-      return { ...acc, value, converted, member: acc.成员昵称, type: 'liquid' };
+      const time = latest ? latest.时间 : '—';
+      
+      // Get institution color and character
+      const institution = data.机构.find(inst => inst.机构ID === acc.机构ID);
+      const color = institution?.代表色HEX || '#64748b';
+      const char = (institution?.机构名称?.[0] || acc.账户昵称[0] || '?').toUpperCase();
+
+      return { 账户昵称: acc.账户昵称, value, converted, member: acc.成员昵称, 成员ID: acc.成员ID, type: 'liquid', time, color, char };
     });
 
+    // 2. Process Fixed Assets (Latest record per asset)
     let fixedToCalculate = data.固定资产;
     if (selectedMemberId !== 'all') {
       fixedToCalculate = fixedToCalculate.filter(asset => asset.成员ID === selectedMemberId);
@@ -140,18 +122,30 @@ const DashboardView: React.FC = () => {
       const value = latest ? Number(latest.估值) || 0 : Number(asset.购入价格) || 0;
       const currency = asset.币种 || displayCurrency;
       const converted = convert(value, currency);
-      return { 账户昵称: asset.资产昵称, value, converted, member: asset.成员昵称, 成员ID: asset.成员ID, type: 'fixed' };
+      const time = latest ? latest.时间 : asset.购入时间 || '—';
+      const char = (asset.资产昵称?.[0] || '?').toUpperCase();
+      return { 账户昵称: asset.资产昵称, value, converted, member: asset.成员昵称, 成员ID: asset.成员ID, type: 'fixed', time, color: '#f59e0b', char };
     });
 
+    // 3. Process Loans (Unpaid items, latest status per creditor if multiple)
     let loansList = data.借入借出记录.filter(l => l.结清 !== '是');
     if (selectedMemberId !== 'all') {
       loansList = loansList.filter(l => l.成员ID === selectedMemberId);
     }
-    const loanEntries = loansList.map(l => {
+    const loanGroups = new Map<string, any>();
+    loansList.forEach(l => {
+      const key = `${l.借款对象}-${l.成员ID}`;
+      if (!loanGroups.has(key) || new Date(l.时间) > new Date(loanGroups.get(key).时间)) {
+        loanGroups.set(key, l);
+      }
+    });
+
+    const loanEntries = Array.from(loanGroups.values()).map(l => {
       const isBorrowing = l.借入借出 === '借入';
       const rawValue = Number(l.借款额) || 0;
       const currency = l.币种 || displayCurrency;
       const converted = convert(rawValue, currency);
+      const char = (l.借款对象?.[0] || '?').toUpperCase();
       return {
         账户昵称: l.借款对象,
         value: isBorrowing ? -rawValue : rawValue,
@@ -159,7 +153,10 @@ const DashboardView: React.FC = () => {
         member: l.成员昵称,
         成员ID: l.成员ID,
         type: 'loan',
-        isLiability: isBorrowing
+        isLiability: isBorrowing,
+        time: l.时间,
+        color: isBorrowing ? '#e11d48' : '#2563eb',
+        char
       };
     });
 
@@ -168,9 +165,21 @@ const DashboardView: React.FC = () => {
     const loanNet = loanEntries.reduce((sum, item) => sum + item.converted, 0);
     const netWorth = liquidTotal + fixedTotal + loanNet;
 
-    const snapshots = [...latestLiquidByAccount, ...latestFixedByAsset, ...loanEntries]
+    // Filter snapshots based on selected type
+    let snapshots = [];
+    if (snapshotTypeFilter === 'all') {
+      snapshots = [...latestLiquidByAccount, ...latestFixedByAsset, ...loanEntries];
+    } else if (snapshotTypeFilter === 'liquid') {
+      snapshots = latestLiquidByAccount;
+    } else if (snapshotTypeFilter === 'fixed') {
+      snapshots = latestFixedByAsset;
+    } else if (snapshotTypeFilter === 'loan') {
+      snapshots = loanEntries;
+    }
+
+    snapshots = snapshots
       .sort((a, b) => Math.abs(b.converted) - Math.abs(a.converted))
-      .slice(0, 12);
+      .slice(0, 15);
 
     const memberData = data.成员.map(m => {
       const val = [...latestLiquidByAccount, ...latestFixedByAsset, ...loanEntries]
@@ -180,7 +189,7 @@ const DashboardView: React.FC = () => {
     }).filter(m => m.value > 0);
 
     return { netWorth, liquidTotal, fixedTotal, loanNet, memberData, snapshots };
-  }, [data, displayCurrency, selectedMemberId, exchangeRatesMap]);
+  }, [data, displayCurrency, selectedMemberId, exchangeRatesMap, snapshotTypeFilter]);
 
   const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
 
@@ -199,12 +208,7 @@ const DashboardView: React.FC = () => {
 
           <div className="flex-1 flex items-center gap-6 overflow-x-auto no-scrollbar py-2">
             {availableCurrencies.filter(c => c !== displayCurrency).map(curr => {
-              // We want to show how many Foreign Units = 1 Base Unit.
-              // exchangeRatesMap[curr] = Amount of 'curr' equivalent to 1 'displayCurrency'.
-              // Example: Display=USD, Map[CNY]=7.18.
-              // We show: CNY 7.18
               const rateToDisplay = exchangeRatesMap[curr] || 0;
-              
               return (
                 <div key={curr} className="flex items-center gap-4 bg-white/60 px-6 py-4 rounded-[24px] border border-white/80 flex-shrink-0 shadow-sm hover:scale-105 transition-transform">
                   <span className="text-[12px] lg:text-[16px] font-black text-slate-400">{curr}</span>
@@ -253,13 +257,30 @@ const DashboardView: React.FC = () => {
         </div>
 
         <div className="lg:col-span-2 p-10 lg:p-14 rounded-[48px] bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg overflow-hidden">
-          <h3 className="text-2xl lg:text-4xl font-black mb-10 text-slate-800 tracking-tight">{isZh ? '核心资产快照' : 'Snapshot Highlights'}</h3>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+            <h3 className="text-2xl lg:text-4xl font-black text-slate-800 tracking-tight">{isZh ? '核心资产快照' : 'Snapshot Highlights'}</h3>
+            
+            <div className="flex items-center gap-4 bg-slate-900/5 px-6 py-3 rounded-2xl border border-slate-900/10">
+              <Filter size={18} className="text-slate-400" />
+              <select 
+                value={snapshotTypeFilter} 
+                onChange={(e) => setSnapshotTypeFilter(e.target.value as any)}
+                className="bg-transparent border-none outline-none font-black text-slate-600 text-sm lg:text-base appearance-none cursor-pointer"
+              >
+                <option value="all">{isZh ? '全部类型' : 'All Types'}</option>
+                <option value="liquid">{isZh ? '流动资产' : 'Liquid Only'}</option>
+                <option value="fixed">{isZh ? '固定资产' : 'Fixed Only'}</option>
+                <option value="loan">{isZh ? '债务记录' : 'Debts Only'}</option>
+              </select>
+            </div>
+          </div>
+
           <div className="overflow-x-auto">
             <table className="w-full text-left border-separate border-spacing-y-6">
               <thead>
                 <tr className="text-[12px] lg:text-[15px] uppercase tracking-[0.3em] text-slate-400">
                   <th className="pb-4 px-8">{isZh ? '项目' : 'Account'}</th>
-                  <th className="pb-4 px-8">{isZh ? '成员' : 'Member'}</th>
+                  <th className="pb-4 px-8">{isZh ? '最后更新' : 'Updated'}</th>
                   <th className="pb-4 px-8 text-right">{isZh ? '折算数值' : 'Valuation'}</th>
                 </tr>
               </thead>
@@ -267,10 +288,30 @@ const DashboardView: React.FC = () => {
                 {calculations.snapshots.map((acc, i) => (
                   <tr key={i} className="bg-white/20 hover:bg-white/50 transition-all rounded-[32px] overflow-hidden group">
                     <td className="py-7 lg:py-9 px-8 font-black text-slate-700 rounded-l-[32px] whitespace-nowrap">
-                      {String(acc.账户昵称)}
-                      <span className="ml-5 text-[10px] lg:text-[13px] font-black uppercase tracking-tighter opacity-30 px-3 py-1 bg-slate-900/5 rounded-lg">[{acc.type}]</span>
+                      <div className="flex items-center gap-4 sm:gap-6">
+                        {/* Rounded Square Logo Element */}
+                        <div 
+                          className="w-10 h-10 lg:w-14 lg:h-14 rounded-[12px] lg:rounded-[20px] shadow-md flex items-center justify-center text-white font-black text-base lg:text-xl select-none flex-shrink-0" 
+                          style={{ backgroundColor: (acc as any).color }} 
+                          title={isZh ? "关联机构色" : "Institution Color"}
+                        >
+                          {(acc as any).char}
+                        </div>
+                        
+                        {/* Nickname & Label in one horizontal row */}
+                        <div className="flex items-center gap-4">
+                          <span className="font-black text-slate-900 text-base lg:text-2xl tracking-tight">
+                            {String(acc.账户昵称)}
+                          </span>
+                          <span className={`text-[9px] lg:text-[11px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md flex-shrink-0 ${acc.type === 'liquid' ? 'bg-blue-100 text-blue-600' : acc.type === 'fixed' ? 'bg-amber-100 text-amber-600' : 'bg-purple-100 text-purple-600'}`}>
+                            {acc.type === 'liquid' ? (isZh ? '流动' : 'LIQ') : acc.type === 'fixed' ? (isZh ? '固定' : 'FIX') : (isZh ? '债务' : 'DBT')}
+                          </span>
+                        </div>
+                      </div>
                     </td>
-                    <td className="py-7 lg:py-9 px-8 text-slate-500 whitespace-nowrap font-bold">{String(acc.member)}</td>
+                    <td className="py-7 lg:py-9 px-8 text-slate-400 whitespace-nowrap font-bold text-xs lg:text-base uppercase tracking-widest">
+                      {String((acc as any).time)}
+                    </td>
                     <td className="py-7 lg:py-9 px-8 text-right rounded-r-[32px] whitespace-nowrap">
                        <span className={`font-black tracking-tighter text-2xl lg:text-4xl ${(acc as any).isLiability || acc.converted < 0 ? 'text-rose-600' : 'text-blue-600'}`}>
                          {Math.round(acc.converted).toLocaleString()}
@@ -281,6 +322,9 @@ const DashboardView: React.FC = () => {
                 ))}
               </tbody>
             </table>
+            {calculations.snapshots.length === 0 && (
+              <div className="py-20 text-center opacity-20 italic font-black text-2xl">{isZh ? '暂无匹配数据' : 'No matching data.'}</div>
+            )}
           </div>
         </div>
       </div>
