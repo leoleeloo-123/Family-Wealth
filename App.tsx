@@ -107,10 +107,10 @@ const App: React.FC = () => {
   const generateId = useCallback((p: string) => `${p}-${Date.now().toString().slice(-6)}`, []);
 
   const mainMenuItems = [
-    { id: 'Dashboard', label: settings.language === 'en' ? 'Dashboard' : '仪表盘', icon: <LayoutDashboard strokeWidth={2.5} /> },
-    { id: 'Records', label: settings.language === 'en' ? 'Records' : '历史记录', icon: <History strokeWidth={2.5} /> },
-    { id: 'MasterData', label: settings.language === 'en' ? 'Master Data' : '基础数据', icon: <Database strokeWidth={2.5} /> },
-    { id: 'DataManagement', label: settings.language === 'en' ? 'Data & Settings' : '数据与设置', icon: <FileSpreadsheet strokeWidth={2.5} /> },
+    { id: 'Dashboard', label: settings.language === 'en' ? 'Dashboard' : '仪表', icon: <LayoutDashboard strokeWidth={2.5} /> },
+    { id: 'Records', label: settings.language === 'en' ? 'Records' : '记录', icon: <History strokeWidth={2.5} /> },
+    { id: 'MasterData', label: settings.language === 'en' ? 'Master Data' : '数据', icon: <Database strokeWidth={2.5} /> },
+    { id: 'DataManagement', label: settings.language === 'en' ? 'Settings' : '设置', icon: <FileSpreadsheet strokeWidth={2.5} /> },
   ];
 
   const fontSizeStyles = {
