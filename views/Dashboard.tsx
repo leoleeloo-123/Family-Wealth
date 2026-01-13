@@ -10,6 +10,16 @@ import {
   BarChart3, ChevronDown, Calendar, ArrowUpRight, Clock 
 } from 'lucide-react';
 
+// Deterministic color generator based on string hash
+const generateColorFromString = (str: string) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const h = Math.abs(hash % 360);
+  return `hsl(${h}, 65%, 45%)`;
+};
+
 const DashboardView: React.FC = () => {
   const context = useContext(AppContext);
   if (!context) return null;
@@ -93,8 +103,25 @@ const DashboardView: React.FC = () => {
       return rateFactor ? amount / rateFactor : 0;
     };
 
+    // Robust color resolution helper
+    const resolveColor = (acc: any, type: 'liquid' | 'fixed') => {
+      if (type === 'liquid') {
+        const instById = data.机构.find(i => i.机构ID === acc.机构ID);
+        if (instById?.代表色HEX) return instById.代表色HEX;
+        
+        const instByName = data.机构.find(i => i.机构名称 === acc.机构名称);
+        if (instByName?.代表色HEX) return instByName.代表色HEX;
+        
+        return generateColorFromString(acc.机构名称 || acc.账户昵称 || 'Default');
+      } else {
+        const fixedAssetColors: Record<string, string> = {
+          '房地产': '#6366f1', '车辆': '#06b6d4', '股权': '#8b5cf6', '珠宝': '#f43f5e', '其他': '#64748b'
+        };
+        return fixedAssetColors[acc.固定资产类型] || generateColorFromString(acc.资产昵称 || 'Fixed');
+      }
+    };
+
     const allLatestLiquid = data.账户.map(acc => {
-      const inst = data.机构.find(i => i.机构ID === acc.机构ID);
       const records = data.流动资产记录.filter(r => r.账户ID === acc.账户ID).sort((a, b) => new Date(b.时间).getTime() - new Date(a.时间).getTime());
       const latest = records[0];
       const val = latest ? Number(latest.市值) || 0 : 0;
@@ -107,13 +134,9 @@ const DashboardView: React.FC = () => {
         converted: convert(val, cur), 
         risk: normalizeRisk(acc.风险评估, isZh), 
         type: 'liquid',
-        代表色HEX: inst?.代表色HEX || '#4f46e5'
+        resolvedColor: resolveColor(acc, 'liquid')
       };
     });
-
-    const fixedAssetColors: Record<string, string> = {
-      '房地产': '#6366f1', '车辆': '#06b6d4', '股权': '#8b5cf6', '珠宝': '#f43f5e', '其他': '#64748b'
-    };
 
     const allLatestFixed = data.固定资产.map(asset => {
       const records = data.固定资产记录.filter(r => r.资产ID === asset.资产ID).sort((a, b) => new Date(b.时间).getTime() - new Date(a.时间).getTime());
@@ -128,7 +151,7 @@ const DashboardView: React.FC = () => {
         converted: convert(val, cur), 
         risk: isZh ? '低' : 'Low', 
         type: 'fixed',
-        代表色HEX: fixedAssetColors[asset.固定资产类型] || '#64748b'
+        resolvedColor: resolveColor(asset, 'fixed')
       };
     });
 
@@ -221,7 +244,7 @@ const DashboardView: React.FC = () => {
   return (
     <div className="space-y-8 animate-in fade-in duration-700 w-full px-2 sm:px-6 lg:px-10 max-w-full overflow-x-hidden">
       
-      {/* Row 1: 4 Metrics */}
+      {/* Row 1: Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 lg:gap-10">
         <StatCard label={isZh ? "净资产" : "NET WORTH"} value={calculations.netWorth} icon={<TrendingUp />} colorClass="text-indigo-600" grad="from-indigo-500/30 to-blue-500/10" />
         <StatCard label={isZh ? "流动资产" : "LIQUID"} value={calculations.liquidTotal} icon={<Wallet />} colorClass="text-emerald-600" grad="from-emerald-500/30 to-teal-500/10" />
@@ -229,7 +252,6 @@ const DashboardView: React.FC = () => {
         <StatCard label={isZh ? "债务净额" : "NET LOANS"} value={calculations.loanNet} icon={<Landmark />} colorClass="text-purple-600" grad="from-pink-500/30 to-purple-500/10" />
       </div>
 
-      {/* Row 2: Asset Perspective */}
       <div className="glass-card rounded-[48px] border-white/60 shadow-2xl overflow-hidden flex flex-col bg-white/20 backdrop-blur-xl">
         <div className="p-10 lg:p-14 border-b border-white/20 bg-white/40 flex flex-col lg:flex-row items-center justify-between gap-8">
           <div className="flex flex-col sm:flex-row items-center gap-6 xl:gap-10">
@@ -336,12 +358,11 @@ const DashboardView: React.FC = () => {
               </thead>
               <tbody>
                 {calculations.snapshots.map((acc: any, idx) => {
-                  const brandColor = acc.代表色HEX || '#4f46e5';
+                  const brandColor = acc.resolvedColor;
                   return (
                     <tr key={idx} className="bg-white/40 hover:bg-white/80 transition-all duration-500 rounded-[32px] group shadow-sm hover:shadow-xl hover:-translate-y-1">
                       <td className="px-10 py-7 rounded-l-[32px]">
                         <div className="flex items-center gap-6">
-                          {/* Asset Node Icon - Fixed bg color issue by removing Tailwind background classes */}
                           <div 
                             className="w-12 h-12 lg:w-16 lg:h-16 rounded-[22px] shadow-lg flex items-center justify-center text-white font-black text-sm lg:text-xl transition-transform group-hover:rotate-6" 
                             style={{ backgroundColor: brandColor }}
@@ -359,7 +380,6 @@ const DashboardView: React.FC = () => {
                       </td>
                       <td className="px-10 py-7">
                         <div className="flex flex-col gap-2.5">
-                          {/* Institution Pill */}
                           <div 
                             className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full border shadow-sm transition-all group-hover:shadow-md max-w-fit"
                             style={{ 
@@ -402,7 +422,7 @@ const DashboardView: React.FC = () => {
                       </td>
                       <td className="px-10 py-7 text-right rounded-r-[32px]">
                         <div className="flex flex-col items-end">
-                          <span className={`text-2xl lg:text-4xl font-black tracking-tighter leading-none ${acc.converted < 0 ? 'text-rose-600' : 'text-indigo-600'}`}>{Math.round(acc.converted).toLocaleString()}</span>
+                          <span className={`text-2xl lg:text-4xl font-black tracking-tighter leading-none ${acc.converted < 0 ? 'text-rose-600' : 'text-slate-900'}`}>{Math.round(acc.converted).toLocaleString()}</span>
                           <span className="text-[10px] lg:text-[14px] font-black text-slate-400 uppercase tracking-widest mt-2">{displayCurrency}</span>
                         </div>
                       </td>

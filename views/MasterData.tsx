@@ -28,7 +28,6 @@ const MasterDataView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
 
-  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [modalTab, setModalTab] = useState<TabName>('成员');
@@ -42,7 +41,6 @@ const MasterDataView: React.FC = () => {
   const currentTab = isModalOpen ? modalTab : activeTab;
   const idColumn = EXCEL_STRUCTURE[currentTab][0];
 
-  // Identifies which columns are considered "Nicknames" or "Primary Labels"
   const nicknameFields = ['成员昵称', '机构名称', '设备昵称', '账户昵称', '保险昵称', '资产昵称'];
 
   const linkedFieldsMapping: Record<string, { idField: string, source: TabName, lookupKey: string }> = {
@@ -134,9 +132,10 @@ const MasterDataView: React.FC = () => {
     const mapping = linkedFieldsMapping[field];
     if (mapping && mapping.source !== modalTab) {
       const sourceData = data[mapping.source] as any[];
-      const matched = sourceData.find(item => String(item[mapping.lookupKey]) === String(value));
+      // Try fuzzy match if exact match fails
+      const matched = sourceData.find(item => String(item[mapping.lookupKey] || '').trim().toLowerCase() === String(value || '').trim().toLowerCase());
       if (matched) {
-        const sourceIdKey = mapping.source === '成员' ? '成员ID' : mapping.source === '机构' ? '机构ID' : mapping.source === '手机' ? '设备ID' : '账户ID';
+        const sourceIdKey = EXCEL_STRUCTURE[mapping.source][0];
         newRows[idx][mapping.idField] = matched[sourceIdKey];
       } else {
         newRows[idx][mapping.idField] = '';
@@ -147,7 +146,6 @@ const MasterDataView: React.FC = () => {
   };
 
   const handleSaveModal = () => {
-    // Validation: Nicknames must not be empty
     const currentNicknameField = EXCEL_STRUCTURE[modalTab].find(col => nicknameFields.includes(col));
     const invalidIndices: number[] = [];
     
@@ -206,6 +204,14 @@ const MasterDataView: React.FC = () => {
         </span>
       );
     }
+    if (col === '代表色HEX') {
+        return (
+            <div className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-md border shadow-sm" style={{ backgroundColor: String(value || '#ccc') }}></div>
+                <span className="font-mono text-[11px] font-bold text-slate-400">{String(value || '#—')}</span>
+            </div>
+        )
+    }
     if (typeof value === 'string' && value.includes('|||')) {
       const tags = value.split('|||').map(t => t.trim()).filter(Boolean);
       return (
@@ -224,7 +230,6 @@ const MasterDataView: React.FC = () => {
 
   return (
     <div className="space-y-6 sm:space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      
       <div className="flex flex-col gap-6">
         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
           <div className="flex flex-wrap gap-2 p-1.5 bg-white/40 backdrop-blur-2xl rounded-[32px] border border-white/60 shadow-lg w-full xl:w-auto overflow-x-auto no-scrollbar">
@@ -275,11 +280,9 @@ const MasterDataView: React.FC = () => {
         </div>
       </div>
 
-      {/* Sync Modal: Extra Wide (90vw) with mandatory nickname highlighting */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-3xl flex items-center justify-center p-4 z-[100] animate-in fade-in zoom-in-95 duration-500">
           <div className="glass-card rounded-[40px] sm:rounded-[48px] shadow-4xl w-full max-w-[90vw] max-h-[90vh] flex flex-col overflow-hidden bg-white border-white">
-             
              <header className="px-6 sm:px-10 py-6 sm:py-8 border-b border-slate-100 flex flex-col gap-6 relative bg-white/80">
                 <div className="flex items-center justify-between gap-4">
                   <div>
