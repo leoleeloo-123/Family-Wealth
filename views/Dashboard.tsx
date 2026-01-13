@@ -204,12 +204,24 @@ const DashboardView: React.FC = () => {
       {/* Row 2: Core Asset Perspective (Trends + Table) - Spans Entire Width */}
       <div className="glass-card rounded-[48px] border-white/60 shadow-2xl overflow-hidden flex flex-col bg-white/20 backdrop-blur-xl">
         {/* Header with All Selectors */}
-        <div className="p-10 lg:p-14 border-b border-white/20 bg-white/40 flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="flex items-center gap-6">
+        <div className="p-10 lg:p-14 border-b border-white/20 bg-white/40 flex flex-col lg:flex-row items-center justify-between gap-8">
+          <div className="flex flex-col sm:flex-row items-center gap-6 xl:gap-10">
             <div className="p-4 bg-indigo-600 text-white rounded-[24px] shadow-xl shadow-indigo-200"><ArrowUpRight size={28} strokeWidth={3} /></div>
-            <div>
+            <div className="flex flex-col">
               <h3 className="text-3xl lg:text-5xl font-black text-slate-800 tracking-tighter leading-none">{isZh ? '核心资产透视' : 'Core Asset Perspective'}</h3>
-              <p className="text-xs font-black text-slate-400 uppercase tracking-[0.4em] mt-3">{isZh ? '趋势分析与明细快照' : 'Trend Analysis & Detailed Snapshot'}</p>
+              <div className="flex items-center gap-3 mt-3">
+                <p className="text-xs font-black text-slate-400 uppercase tracking-[0.4em]">{isZh ? '当前基准汇率:' : 'FX BENCHMARK:'}</p>
+                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-[400px]">
+                  {availableCurrencies.filter(c => c !== displayCurrency && (c === 'CNY' || c === 'USD' || c === 'HKD')).map(curr => {
+                    const rate = exchangeRatesMap[curr] || 0;
+                    return (
+                      <span key={curr} className="text-[10px] font-black uppercase text-blue-600/80 bg-blue-50/50 px-2 py-1 rounded-lg border border-blue-100 whitespace-nowrap">
+                        {isZh ? `兑换${curr === 'CNY' ? '人民币' : curr === 'HKD' ? '港币' : curr}:` : `to ${curr}:`} {rate > 0 ? rate.toFixed(2) : '--'}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
           
