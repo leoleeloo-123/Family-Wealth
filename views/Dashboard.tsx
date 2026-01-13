@@ -12,7 +12,6 @@ const DashboardView: React.FC = () => {
   const [displayCurrency, setDisplayCurrency] = useState<string>(settings.baseCurrency);
   const [selectedMemberId, setSelectedMemberId] = useState<string>('all');
   const [snapshotTypeFilter, setSnapshotTypeFilter] = useState<'all' | 'liquid' | 'fixed' | 'loan'>('liquid');
-  const [selectedMetric, setSelectedMetric] = useState<'liquid' | 'fixed' | 'loan' | 'netWorth'>('liquid');
 
   const isZh = settings.language === 'zh';
 
@@ -77,7 +76,6 @@ const DashboardView: React.FC = () => {
     return rates;
   }, [data.汇率, displayCurrency, availableCurrencies]);
 
-  // Risk related definitions (Strict order for stacking)
   const RISK_LEVELS = isZh ? ['极高', '高', '中', '低', '未知'] : ['Very High', 'High', 'Medium', 'Low', 'Unknown'];
   const RISK_COLORS: Record<string, string> = {
     'Low': '#10b981', '低': '#10b981',
@@ -103,7 +101,6 @@ const DashboardView: React.FC = () => {
       const currency = latest ? latest.币种 : acc.币种 || displayCurrency; 
       const converted = convert(value, currency);
       const time = latest ? latest.时间 : '—';
-      // Normalize risk level
       let riskLevel = acc.风险评估 || (isZh ? '未知' : 'Unknown');
       if (riskLevel === 'None' || riskLevel === '无') riskLevel = (isZh ? '未知' : 'Unknown');
       
@@ -137,23 +134,18 @@ const DashboardView: React.FC = () => {
 
     const netWorth = liquidTotal + fixedTotal + loanNet;
 
-    // Build Bar Data (100% Stacked)
     const members = data.成员;
     const barData = [];
-
     const buildRow = (name: string, assets: any[]) => {
       const row: any = { name };
       const total = assets.reduce((s, i) => s + Math.max(0, i.converted), 0);
       RISK_LEVELS.forEach(level => {
         const val = assets.filter(i => i.riskLevel === level).reduce((s, i) => s + Math.max(0, i.converted), 0);
-        // We use 0.00001 instead of 0 for empty levels to ensure they "exist" in Recharts logic if needed, 
-        // but normally Recharts handles 0 fine for 100% stack if at least one value is > 0.
         row[level] = total > 0 ? (val / total) * 100 : (level === (isZh ? '未知' : 'Unknown') ? 100 : 0);
         row[`${level}_val`] = val;
       });
       return row;
     };
-
     barData.push(buildRow(isZh ? '全家' : 'Family', allLatestLiquid));
     members.forEach(m => {
       const mAssets = allLatestLiquid.filter(i => i.成员ID === m.成员ID);
@@ -169,36 +161,49 @@ const DashboardView: React.FC = () => {
     return { netWorth, liquidTotal, fixedTotal, loanNet, barData, snapshots };
   }, [data, displayCurrency, selectedMemberId, exchangeRatesMap, snapshotTypeFilter, isZh, RISK_LEVELS]);
 
-  const activeMetricData = useMemo(() => {
-    switch(selectedMetric) {
-      case 'netWorth': return { label: isZh ? "净资产" : "Net Worth", value: calculations.netWorth, icon: <TrendingUp size={18} />, grad: "from-blue-500/20 to-indigo-500/10", text: "text-indigo-600" };
-      case 'liquid': return { label: isZh ? "流动资产" : "Liquid", value: calculations.liquidTotal, icon: <Wallet size={18} />, grad: "from-emerald-500/20 to-teal-500/10", text: "text-emerald-600" };
-      case 'fixed': return { label: isZh ? "固定资产" : "Fixed", value: calculations.fixedTotal, icon: <Home size={18} />, grad: "from-orange-500/20 to-amber-500/10", text: "text-amber-600" };
-      case 'loan': return { label: isZh ? "债务净额" : "Net Loans", value: calculations.loanNet, icon: <Landmark size={18} />, grad: "from-pink-500/20 to-purple-500/10", text: "text-purple-600" };
-    }
-  }, [selectedMetric, calculations, isZh]);
+  const StatCard = ({ label, value, icon, colorClass, highlightGrad }: any) => (
+    <div className="glass-card rounded-[24px] lg:rounded-[32px] p-4 lg:p-5 bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg flex flex-col justify-between relative overflow-hidden group min-h-[110px] lg:min-h-[130px]">
+      <div className={`absolute -right-8 -top-8 w-24 h-24 bg-gradient-to-br ${highlightGrad} rounded-full blur-[40px] opacity-40 group-hover:scale-150 transition-transform duration-1000`}></div>
+      <div className="flex items-center gap-3 relative z-10">
+        <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-xl flex items-center justify-center bg-white shadow-sm ${colorClass}`}>
+          {React.cloneElement(icon, { size: 18 })}
+        </div>
+        <span className="text-[10px] lg:text-[11px] font-black text-slate-400 uppercase tracking-widest">{label}</span>
+      </div>
+      <div className="relative z-10 mt-auto">
+        <div className="flex items-baseline gap-1.5 overflow-hidden">
+          <span className={`text-xl lg:text-3xl font-black tracking-tighter truncate ${value < 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+            {Math.round(value).toLocaleString()}
+          </span>
+          <span className="text-[8px] lg:text-[10px] font-black text-slate-400 uppercase tracking-tighter flex-shrink-0">{displayCurrency}</span>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-4 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       
-      {/* Selection Control Bar */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 lg:gap-6 items-stretch">
-        <div className="xl:col-span-4 glass-card rounded-[28px] lg:rounded-[40px] p-4 lg:p-6 bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg flex items-center gap-4 lg:gap-6 min-h-[100px] lg:min-h-[120px]">
-          <div className="flex items-center gap-2 bg-blue-600/10 px-3 lg:px-4 py-2.5 rounded-[18px] text-blue-600 border border-blue-600/20 shadow-inner flex-shrink-0">
-            <Globe size={18} strokeWidth={2.5} />
-            <select value={displayCurrency} onChange={(e) => setDisplayCurrency(e.target.value)} className="bg-transparent border-none outline-none font-black text-sm lg:text-lg tracking-widest cursor-pointer appearance-none min-w-[50px]">
+      {/* Top 6-Card Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 lg:gap-4 items-stretch">
+        
+        {/* Card 1: Currency & Rates */}
+        <div className="glass-card rounded-[24px] lg:rounded-[32px] p-4 lg:p-5 bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg flex flex-col gap-3 min-h-[110px] lg:min-h-[130px]">
+          <div className="flex items-center gap-2 bg-blue-600/10 px-3 py-2 rounded-xl text-blue-600 border border-blue-600/20 shadow-inner">
+            <Globe size={14} strokeWidth={2.5} />
+            <select value={displayCurrency} onChange={(e) => setDisplayCurrency(e.target.value)} className="bg-transparent border-none outline-none font-black text-xs lg:text-sm tracking-widest cursor-pointer appearance-none">
               {availableCurrencies.map(curr => <option key={curr} value={curr}>{curr}</option>)}
             </select>
-            <ChevronDown size={14} className="opacity-50" />
+            <ChevronDown size={12} className="opacity-50" />
           </div>
-          <div className="flex-1 overflow-x-auto no-scrollbar py-1">
-            <div className="flex items-center gap-3">
+          <div className="flex-1 overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-2">
               {availableCurrencies.filter(c => c !== displayCurrency).map(curr => {
                 const rate = exchangeRatesMap[curr] || 0;
                 return (
-                  <div key={curr} className="flex flex-col items-center flex-shrink-0 bg-white/40 px-3 py-1.5 rounded-xl border border-white/60 min-w-[70px]">
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{curr}</span>
-                    <span className="text-xs lg:text-sm font-black text-slate-700">{rate > 0 ? rate.toFixed(2) : '--'}</span>
+                  <div key={curr} className="flex flex-col items-center flex-shrink-0 bg-white/40 px-2 py-1.5 rounded-lg border border-white/60 min-w-[55px]">
+                    <span className="text-[8px] font-black text-slate-400 uppercase">{curr}</span>
+                    <span className="text-[10px] lg:text-xs font-black text-slate-700">{rate > 0 ? rate.toFixed(2) : '--'}</span>
                   </div>
                 );
               })}
@@ -206,46 +211,55 @@ const DashboardView: React.FC = () => {
           </div>
         </div>
 
-        <div className="xl:col-span-3 glass-card rounded-[28px] lg:rounded-[40px] p-4 lg:p-6 bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg flex items-center gap-4 lg:gap-6 min-h-[100px] lg:min-h-[120px]">
-          <div className="w-10 h-10 lg:w-14 lg:h-14 rounded-2xl flex items-center justify-center bg-slate-900/5 text-slate-400 flex-shrink-0"><User size={24} /></div>
+        {/* Card 2: Member Perspective */}
+        <div className="glass-card rounded-[24px] lg:rounded-[32px] p-4 lg:p-5 bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg flex items-center gap-4 min-h-[110px] lg:min-h-[130px]">
+          <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl flex items-center justify-center bg-slate-900/5 text-slate-400 flex-shrink-0"><User size={20} /></div>
           <div className="flex-1 min-w-0">
-            <p className="text-[9px] lg:text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1 leading-none">{isZh ? '视图成员' : 'PERSPECTIVE'}</p>
-            <select value={selectedMemberId} onChange={(e) => setSelectedMemberId(e.target.value)} className="w-full bg-transparent border-none outline-none font-black text-slate-800 text-lg lg:text-2xl appearance-none cursor-pointer truncate pr-6">
-              <option value="all">{isZh ? '全体成员' : 'All Members'}</option>
-              {data.成员.map(m => <option key={m.成员ID} value={m.成员ID}>{m.成员昵称}</option>)}
-            </select>
+            <p className="text-[8px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isZh ? '视图成员' : 'MEMBER'}</p>
+            <div className="relative">
+              <select value={selectedMemberId} onChange={(e) => setSelectedMemberId(e.target.value)} className="w-full bg-transparent border-none outline-none font-black text-slate-800 text-sm lg:text-xl appearance-none cursor-pointer truncate pr-4">
+                <option value="all">{isZh ? '全体成员' : 'All'}</option>
+                {data.成员.map(m => <option key={m.成员ID} value={m.成员ID}>{m.成员昵称}</option>)}
+              </select>
+              <ChevronDown size={12} className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none opacity-30" />
+            </div>
           </div>
         </div>
 
-        <div className="xl:col-span-5 glass-card rounded-[28px] lg:rounded-[40px] p-4 lg:p-6 bg-white/50 backdrop-blur-2xl border border-white/80 shadow-2xl flex items-center justify-between gap-6 min-h-[100px] lg:min-h-[120px] relative overflow-hidden group">
-          <div className={`absolute -right-16 -top-16 w-56 h-56 bg-gradient-to-br ${activeMetricData.grad} rounded-full blur-[80px] opacity-60 group-hover:scale-125 transition-transform duration-1000`}></div>
-          <div className="flex items-center gap-4 lg:gap-6 relative z-10 flex-shrink-0">
-             <div className={`w-10 h-10 lg:w-14 lg:h-14 rounded-2xl flex items-center justify-center bg-white shadow-md ${activeMetricData.text}`}>{activeMetricData.icon}</div>
-             <div className="flex flex-col">
-               <span className="text-[9px] lg:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1 leading-none">{isZh ? '核心指标' : 'FOCUS METRIC'}</span>
-               <div className="relative">
-                <select value={selectedMetric} onChange={(e) => setSelectedMetric(e.target.value as any)} className="bg-transparent border-none outline-none font-black text-slate-800 text-base lg:text-xl appearance-none cursor-pointer pr-6 hover:text-indigo-600 transition-colors">
-                  <option value="netWorth">{isZh ? '净资产' : 'Net Worth'}</option>
-                  <option value="liquid">{isZh ? '流动资产' : 'Liquid Assets'}</option>
-                  <option value="fixed">{isZh ? '固定资产' : 'Fixed Assets'}</option>
-                  <option value="loan">{isZh ? '债务净额' : 'Net Loans'}</option>
-                </select>
-                <ChevronDown size={14} className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none opacity-30" />
-               </div>
-             </div>
-          </div>
-          <div className="relative z-10 text-right flex flex-col items-end">
-             <div className="flex items-baseline gap-2">
-               <span className={`text-3xl lg:text-5xl font-black tracking-tighter leading-none ${activeMetricData.value < 0 ? 'text-rose-600' : 'text-slate-900'}`}>{Math.round(activeMetricData.value).toLocaleString()}</span>
-               <span className="text-[10px] lg:text-sm font-black text-slate-400 uppercase tracking-widest">{displayCurrency}</span>
-             </div>
-          </div>
-        </div>
+        {/* Card 3-6: Metric Cards */}
+        <StatCard 
+          label={isZh ? "净资产" : "NET WORTH"} 
+          value={calculations.netWorth} 
+          icon={<TrendingUp />} 
+          colorClass="text-indigo-600" 
+          highlightGrad="from-blue-500/30 to-indigo-500/10" 
+        />
+        <StatCard 
+          label={isZh ? "流动资产" : "LIQUID"} 
+          value={calculations.liquidTotal} 
+          icon={<Wallet />} 
+          colorClass="text-emerald-600" 
+          highlightGrad="from-emerald-500/30 to-teal-500/10" 
+        />
+        <StatCard 
+          label={isZh ? "固定资产" : "FIXED"} 
+          value={calculations.fixedTotal} 
+          icon={<Home />} 
+          colorClass="text-amber-600" 
+          highlightGrad="from-orange-500/30 to-amber-500/10" 
+        />
+        <StatCard 
+          label={isZh ? "债务净额" : "NET LOANS"} 
+          value={calculations.loanNet} 
+          icon={<Landmark />} 
+          colorClass="text-purple-600" 
+          highlightGrad="from-pink-500/30 to-purple-500/10" 
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-10">
         
-        {/* Risk Column Chart - UPGRADED to 100% Stacked */}
+        {/* Risk Column Chart */}
         <div className="p-8 lg:p-10 rounded-[40px] bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg flex flex-col">
           <div className="flex items-center gap-4 mb-8">
             <div className="p-2.5 bg-blue-600/10 text-blue-600 rounded-xl"><BarChart3 size={20} /></div>
@@ -267,7 +281,7 @@ const DashboardView: React.FC = () => {
                           <div className="space-y-2">
                             {payload.slice().reverse().map((entry: any, index) => {
                               const rawVal = entry.payload[`${entry.name}_val`];
-                              if (rawVal === 0 && entry.value === 0) return null; // Only hide 0 in tooltip if they are absolute 0
+                              if (rawVal === 0 && entry.value === 0) return null;
                               return (
                                 <div key={index} className="flex items-center justify-between gap-6">
                                   <div className="flex items-center gap-2">
@@ -327,7 +341,7 @@ const DashboardView: React.FC = () => {
                   <tr key={i} className="bg-white/20 hover:bg-white/50 transition-all rounded-[24px] overflow-hidden group">
                     <td className="py-5 lg:py-6 px-6 font-black text-slate-700 rounded-l-[24px] whitespace-nowrap">
                       <div className="flex items-center gap-4 sm:gap-5">
-                        <div className="w-8 h-8 lg:w-12 lg:h-12 rounded-[12px] lg:rounded-[18px] shadow-sm flex items-center justify-center text-white font-black text-xs lg:text-base select-none flex-shrink-0" style={{ backgroundColor: (acc as any).color }}>
+                        <div className="w-8 h-8 lg:w-12 lg:h-12 rounded-[12px] lg:rounded-[18px] shadow-sm flex items-center justify-center text-white font-black text-xs lg:text-base select-none flex-shrink-0" style={{ backgroundColor: (acc as any).color || '#6366f1' }}>
                           {(acc as any).char}
                         </div>
                         <div className="flex items-center gap-3">
