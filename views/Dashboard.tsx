@@ -85,6 +85,26 @@ const DashboardView: React.FC = () => {
     'Unknown': '#94a3b8', '未知': '#94a3b8'
   };
 
+  const normalizeRisk = (level: string, isZh: boolean) => {
+    const raw = String(level || '').trim();
+    const mapping: any = {
+      '极高': 'Very High', 'Very High': 'Very High', 'VH': 'Very High',
+      '高': 'High', 'High': 'High', 'H': 'High',
+      '中': 'Medium', 'Medium': 'Medium', 'M': 'Medium',
+      '低': 'Low', 'Low': 'Low', 'L': 'Low',
+      '未知': 'Unknown', 'Unknown': 'Unknown', 'None': 'Unknown', '无': 'Unknown', '': 'Unknown'
+    };
+    const standard = mapping[raw] || 'Unknown';
+    const reverseMap: any = {
+      'Very High': isZh ? '极高' : 'Very High',
+      'High': isZh ? '高' : 'High',
+      'Medium': isZh ? '中' : 'Medium',
+      'Low': isZh ? '低' : 'Low',
+      'Unknown': isZh ? '未知' : 'Unknown'
+    };
+    return reverseMap[standard];
+  };
+
   const calculations = useMemo(() => {
     const convert = (amount: number, currency: string) => {
       if (!amount) return 0;
@@ -101,8 +121,7 @@ const DashboardView: React.FC = () => {
       const currency = latest ? latest.币种 : acc.币种 || displayCurrency; 
       const converted = convert(value, currency);
       const time = latest ? latest.时间 : '—';
-      let riskLevel = acc.风险评估 || (isZh ? '未知' : 'Unknown');
-      if (riskLevel === 'None' || riskLevel === '无') riskLevel = (isZh ? '未知' : 'Unknown');
+      const riskLevel = normalizeRisk(acc.风险评估, isZh);
       
       const institution = data.机构.find(inst => inst.机构ID === acc.机构ID);
       const color = institution?.代表色HEX || '#6366f1';
@@ -165,17 +184,17 @@ const DashboardView: React.FC = () => {
     <div className="glass-card rounded-[24px] lg:rounded-[32px] p-4 lg:p-5 bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg flex flex-col justify-between relative overflow-hidden group min-h-[110px] lg:min-h-[130px]">
       <div className={`absolute -right-8 -top-8 w-24 h-24 bg-gradient-to-br ${highlightGrad} rounded-full blur-[40px] opacity-40 group-hover:scale-150 transition-transform duration-1000`}></div>
       <div className="flex items-center gap-3 relative z-10">
-        <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-xl flex items-center justify-center bg-white shadow-sm ${colorClass}`}>
-          {React.cloneElement(icon, { size: 18 })}
+        <div className={`w-8 h-8 lg:w-11 lg:h-11 rounded-xl flex items-center justify-center bg-white shadow-sm ${colorClass}`}>
+          {React.cloneElement(icon, { size: 20 })}
         </div>
-        <span className="text-[10px] lg:text-[11px] font-black text-slate-400 uppercase tracking-widest">{label}</span>
+        <span className="text-[11px] lg:text-[13px] font-black text-slate-500 uppercase tracking-[0.15em]">{label}</span>
       </div>
       <div className="relative z-10 mt-auto">
         <div className="flex items-baseline gap-1.5 overflow-hidden">
-          <span className={`text-xl lg:text-3xl font-black tracking-tighter truncate ${value < 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+          <span className={`text-2xl lg:text-3xl font-black tracking-tighter truncate ${value < 0 ? 'text-rose-600' : 'text-slate-900'}`}>
             {Math.round(value).toLocaleString()}
           </span>
-          <span className="text-[8px] lg:text-[10px] font-black text-slate-400 uppercase tracking-tighter flex-shrink-0">{displayCurrency}</span>
+          <span className="text-[9px] lg:text-[11px] font-black text-slate-400 uppercase tracking-tighter flex-shrink-0">{displayCurrency}</span>
         </div>
       </div>
     </div>
@@ -191,7 +210,7 @@ const DashboardView: React.FC = () => {
         <div className="glass-card rounded-[24px] lg:rounded-[32px] p-4 lg:p-5 bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg flex flex-col gap-3 min-h-[110px] lg:min-h-[130px]">
           <div className="flex items-center gap-2 bg-blue-600/10 px-3 py-2 rounded-xl text-blue-600 border border-blue-600/20 shadow-inner">
             <Globe size={14} strokeWidth={2.5} />
-            <select value={displayCurrency} onChange={(e) => setDisplayCurrency(e.target.value)} className="bg-transparent border-none outline-none font-black text-xs lg:text-sm tracking-widest cursor-pointer appearance-none">
+            <select value={displayCurrency} onChange={(e) => setDisplayCurrency(e.target.value)} className="bg-transparent border-none outline-none font-black text-xs lg:text-base tracking-widest cursor-pointer appearance-none">
               {availableCurrencies.map(curr => <option key={curr} value={curr}>{curr}</option>)}
             </select>
             <ChevronDown size={12} className="opacity-50" />
@@ -201,9 +220,9 @@ const DashboardView: React.FC = () => {
               {availableCurrencies.filter(c => c !== displayCurrency).map(curr => {
                 const rate = exchangeRatesMap[curr] || 0;
                 return (
-                  <div key={curr} className="flex flex-col items-center flex-shrink-0 bg-white/40 px-2 py-1.5 rounded-lg border border-white/60 min-w-[55px]">
-                    <span className="text-[8px] font-black text-slate-400 uppercase">{curr}</span>
-                    <span className="text-[10px] lg:text-xs font-black text-slate-700">{rate > 0 ? rate.toFixed(2) : '--'}</span>
+                  <div key={curr} className="flex flex-col items-center flex-shrink-0 bg-white/40 px-2 py-1.5 rounded-lg border border-white/60 min-w-[65px]">
+                    <span className="text-[10px] font-black text-slate-400 uppercase">{curr}</span>
+                    <span className="text-xs lg:text-sm font-black text-slate-700">{rate > 0 ? rate.toFixed(2) : '--'}</span>
                   </div>
                 );
               })}
@@ -213,15 +232,15 @@ const DashboardView: React.FC = () => {
 
         {/* Card 2: Member Perspective */}
         <div className="glass-card rounded-[24px] lg:rounded-[32px] p-4 lg:p-5 bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg flex items-center gap-4 min-h-[110px] lg:min-h-[130px]">
-          <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl flex items-center justify-center bg-slate-900/5 text-slate-400 flex-shrink-0"><User size={20} /></div>
+          <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl flex items-center justify-center bg-slate-900/5 text-slate-400 flex-shrink-0"><User size={22} /></div>
           <div className="flex-1 min-w-0">
-            <p className="text-[8px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isZh ? '视图成员' : 'MEMBER'}</p>
+            <p className="text-[11px] lg:text-[13px] font-black text-slate-500 uppercase tracking-[0.15em] mb-1">{isZh ? '视图成员' : 'MEMBER'}</p>
             <div className="relative">
-              <select value={selectedMemberId} onChange={(e) => setSelectedMemberId(e.target.value)} className="w-full bg-transparent border-none outline-none font-black text-slate-800 text-sm lg:text-xl appearance-none cursor-pointer truncate pr-4">
+              <select value={selectedMemberId} onChange={(e) => setSelectedMemberId(e.target.value)} className="w-full bg-transparent border-none outline-none font-black text-slate-800 text-base lg:text-2xl appearance-none cursor-pointer truncate pr-4">
                 <option value="all">{isZh ? '全体成员' : 'All'}</option>
                 {data.成员.map(m => <option key={m.成员ID} value={m.成员ID}>{m.成员昵称}</option>)}
               </select>
-              <ChevronDown size={12} className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none opacity-30" />
+              <ChevronDown size={14} className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none opacity-30" />
             </div>
           </div>
         </div>
