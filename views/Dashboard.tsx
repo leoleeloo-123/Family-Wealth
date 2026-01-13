@@ -2,7 +2,7 @@
 import React, { useContext, useMemo, useState } from 'react';
 import { AppContext } from '../App';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { TrendingUp, Wallet, Home, Landmark, Globe, User, Filter, PieChart as PieIcon } from 'lucide-react';
+import { TrendingUp, Wallet, Home, Landmark, Globe, User, Filter, PieChart as PieIcon, ChevronDown } from 'lucide-react';
 
 const DashboardView: React.FC = () => {
   const context = useContext(AppContext);
@@ -11,12 +11,11 @@ const DashboardView: React.FC = () => {
 
   const [displayCurrency, setDisplayCurrency] = useState<string>(settings.baseCurrency);
   const [selectedMemberId, setSelectedMemberId] = useState<string>('all');
-  // Defaulting to 'liquid' as requested
   const [snapshotTypeFilter, setSnapshotTypeFilter] = useState<'all' | 'liquid' | 'fixed' | 'loan'>('liquid');
+  const [selectedMetric, setSelectedMetric] = useState<'liquid' | 'fixed' | 'loan' | 'netWorth'>('liquid');
 
   const isZh = settings.language === 'zh';
 
-  // Extract all available currencies
   const availableCurrencies = useMemo(() => {
     const currencies = new Set<string>();
     data.汇率.forEach(rate => {
@@ -35,9 +34,6 @@ const DashboardView: React.FC = () => {
     return Array.from(currencies).filter(Boolean).sort();
   }, [data, settings.baseCurrency]);
 
-  /**
-   * Graph-based Exchange Rate Logic
-   */
   const exchangeRatesMap = useMemo(() => {
     const rates: Record<string, number> = {};
     const base = displayCurrency;
@@ -90,7 +86,6 @@ const DashboardView: React.FC = () => {
       return amount / rateFactor;
     };
 
-    // 1. Process Liquid Assets (Latest record per account)
     let accountsToCalculate = data.账户;
     if (selectedMemberId !== 'all') {
       accountsToCalculate = accountsToCalculate.filter(acc => acc.成员ID === selectedMemberId);
@@ -102,17 +97,13 @@ const DashboardView: React.FC = () => {
       const currency = latest ? latest.币种 : acc.币种 || displayCurrency; 
       const converted = convert(value, currency);
       const time = latest ? latest.时间 : '—';
-      
-      // Get institution color and character
       const institution = data.机构.find(inst => inst.机构ID === acc.机构ID);
       const color = institution?.代表色HEX || '#64748b';
       const char = (institution?.机构名称?.[0] || acc.账户昵称[0] || '?').toUpperCase();
       const riskLevel = acc.风险评估 || (isZh ? '未知' : 'Unknown');
-
       return { 账户昵称: acc.账户昵称, value, converted, member: acc.成员昵称, 成员ID: acc.成员ID, type: 'liquid', time, color, char, riskLevel };
     });
 
-    // 2. Process Fixed Assets (Latest record per asset)
     let fixedToCalculate = data.固定资产;
     if (selectedMemberId !== 'all') {
       fixedToCalculate = fixedToCalculate.filter(asset => asset.成员ID === selectedMemberId);
@@ -128,7 +119,6 @@ const DashboardView: React.FC = () => {
       return { 账户昵称: asset.资产昵称, value, converted, member: asset.成员昵称, 成员ID: asset.成员ID, type: 'fixed', time, color: '#f59e0b', char };
     });
 
-    // 3. Process Loans (Unpaid items, latest status per creditor if multiple)
     let loansList = data.借入借出记录.filter(l => l.结清 !== '是');
     if (selectedMemberId !== 'all') {
       loansList = loansList.filter(l => l.成员ID === selectedMemberId);
@@ -140,25 +130,13 @@ const DashboardView: React.FC = () => {
         loanGroups.set(key, l);
       }
     });
-
     const loanEntries = Array.from(loanGroups.values()).map(l => {
       const isBorrowing = l.借入借出 === '借入';
       const rawValue = Number(l.借款额) || 0;
       const currency = l.币种 || displayCurrency;
       const converted = convert(rawValue, currency);
       const char = (l.借款对象?.[0] || '?').toUpperCase();
-      return {
-        账户昵称: l.借款对象,
-        value: isBorrowing ? -rawValue : rawValue,
-        converted: isBorrowing ? -converted : converted,
-        member: l.成员昵称,
-        成员ID: l.成员ID,
-        type: 'loan',
-        isLiability: isBorrowing,
-        time: l.时间,
-        color: isBorrowing ? '#e11d48' : '#2563eb',
-        char
-      };
+      return { 账户昵称: l.借款对象, value: isBorrowing ? -rawValue : rawValue, converted: isBorrowing ? -converted : converted, member: l.成员昵称, 成员ID: l.成员ID, type: 'loan', isLiability: isBorrowing, time: l.时间, color: isBorrowing ? '#e11d48' : '#2563eb', char };
     });
 
     const liquidTotal = latestLiquidByAccount.reduce((sum, item) => sum + item.converted, 0);
@@ -166,37 +144,25 @@ const DashboardView: React.FC = () => {
     const loanNet = loanEntries.reduce((sum, item) => sum + item.converted, 0);
     const netWorth = liquidTotal + fixedTotal + loanNet;
 
-    // Filter snapshots based on selected type
     let snapshots = [];
-    if (snapshotTypeFilter === 'all') {
-      snapshots = [...latestLiquidByAccount, ...latestFixedByAsset, ...loanEntries];
-    } else if (snapshotTypeFilter === 'liquid') {
-      snapshots = latestLiquidByAccount;
-    } else if (snapshotTypeFilter === 'fixed') {
-      snapshots = latestFixedByAsset;
-    } else if (snapshotTypeFilter === 'loan') {
-      snapshots = loanEntries;
-    }
+    if (snapshotTypeFilter === 'all') snapshots = [...latestLiquidByAccount, ...latestFixedByAsset, ...loanEntries];
+    else if (snapshotTypeFilter === 'liquid') snapshots = latestLiquidByAccount;
+    else if (snapshotTypeFilter === 'fixed') snapshots = latestFixedByAsset;
+    else if (snapshotTypeFilter === 'loan') snapshots = loanEntries;
 
-    snapshots = snapshots
-      .sort((a, b) => Math.abs(b.converted) - Math.abs(a.converted))
-      .slice(0, 15);
+    snapshots = snapshots.sort((a, b) => Math.abs(b.converted) - Math.abs(a.converted)).slice(0, 15);
 
-    // Calculate Liquid Risk Data
     const riskGroups = new Map<string, number>();
     latestLiquidByAccount.forEach(item => {
-      if (item.converted <= 0) return; // Skip zero/liabilities for risk pie if needed, but normally liquid liabilities (CC) are risky
+      if (item.converted <= 0) return;
       const risk = item.riskLevel;
       riskGroups.set(risk, (riskGroups.get(risk) || 0) + item.converted);
     });
-    const riskData = Array.from(riskGroups.entries())
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value);
+    const riskData = Array.from(riskGroups.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
 
     return { netWorth, liquidTotal, fixedTotal, loanNet, riskData, snapshots };
   }, [data, displayCurrency, selectedMemberId, exchangeRatesMap, snapshotTypeFilter, isZh]);
 
-  // Risk related colors
   const RISK_COLORS: Record<string, string> = {
     'Low': '#10b981', '低': '#10b981',
     'Medium': '#f59e0b', '中': '#f59e0b',
@@ -206,55 +172,97 @@ const DashboardView: React.FC = () => {
   };
   const DEFAULT_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
 
+  const activeMetricData = useMemo(() => {
+    switch(selectedMetric) {
+      case 'netWorth': return { label: isZh ? "净资产" : "Net Worth", value: calculations.netWorth, icon: <TrendingUp size={18} />, grad: "from-blue-500/20 to-indigo-500/10", text: "text-indigo-600" };
+      case 'liquid': return { label: isZh ? "流动资产" : "Liquid", value: calculations.liquidTotal, icon: <Wallet size={18} />, grad: "from-emerald-500/20 to-teal-500/10", text: "text-emerald-600" };
+      case 'fixed': return { label: isZh ? "固定资产" : "Fixed", value: calculations.fixedTotal, icon: <Home size={18} />, grad: "from-orange-500/20 to-amber-500/10", text: "text-amber-600" };
+      case 'loan': return { label: isZh ? "债务净额" : "Net Loans", value: calculations.loanNet, icon: <Landmark size={18} />, grad: "from-pink-500/20 to-purple-500/10", text: "text-purple-600" };
+    }
+  }, [selectedMetric, calculations, isZh]);
+
   return (
-    <div className="space-y-4 sm:space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="flex flex-col xl:flex-row items-stretch gap-4 sm:gap-6">
+    <div className="space-y-4 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      
+      {/* Three Cards Layout (One Row) */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 lg:gap-6 items-stretch">
         
-        {/* Currency Selection & Rates Row - Reduced Padding */}
-        <div className="flex-1 rounded-[24px] lg:rounded-[32px] py-4 px-6 bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg flex flex-col md:flex-row md:items-center gap-6 min-h-[80px]">
-          <div className="flex items-center gap-3 bg-blue-600/10 px-4 py-2.5 rounded-[18px] text-blue-600 border border-blue-600/20 shadow-inner group/curr flex-shrink-0">
-            <Globe size={24} strokeWidth={2.5} />
-            <select value={displayCurrency} onChange={(e) => setDisplayCurrency(e.target.value)} className="bg-transparent border-none outline-none font-black text-lg lg:text-2xl tracking-widest cursor-pointer appearance-none">
+        {/* Card 1: Currency & Rates (Integrated) */}
+        <div className="xl:col-span-4 glass-card rounded-[28px] lg:rounded-[40px] p-4 lg:p-6 bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg flex items-center gap-4 lg:gap-6 min-h-[100px] lg:min-h-[140px]">
+          <div className="flex items-center gap-2 bg-blue-600/10 px-3 lg:px-4 py-2.5 rounded-[18px] text-blue-600 border border-blue-600/20 shadow-inner flex-shrink-0">
+            <Globe size={18} strokeWidth={2.5} />
+            <select value={displayCurrency} onChange={(e) => setDisplayCurrency(e.target.value)} className="bg-transparent border-none outline-none font-black text-sm lg:text-lg tracking-widest cursor-pointer appearance-none min-w-[50px]">
               {availableCurrencies.map(curr => <option key={curr} value={curr}>{curr}</option>)}
             </select>
+            <ChevronDown size={14} className="opacity-50" />
           </div>
-
-          <div className="flex-1 flex items-center gap-4 overflow-x-auto no-scrollbar py-1">
-            {availableCurrencies.filter(c => c !== displayCurrency).map(curr => {
-              const rateToDisplay = exchangeRatesMap[curr] || 0;
-              return (
-                <div key={curr} className="flex items-center gap-3 bg-white/60 px-4 py-2.5 rounded-[18px] border border-white/80 flex-shrink-0 shadow-sm hover:scale-105 transition-transform">
-                  <span className="text-[10px] lg:text-[13px] font-black text-slate-400">{curr}</span>
-                  <span className="text-base lg:text-xl font-black text-slate-800">
-                    {rateToDisplay > 0 ? rateToDisplay.toFixed(3) : '--'}
-                  </span>
-                </div>
-              );
-            })}
+          <div className="flex-1 overflow-x-auto no-scrollbar py-1">
+            <div className="flex items-center gap-3">
+              {availableCurrencies.filter(c => c !== displayCurrency).map(curr => {
+                const rate = exchangeRatesMap[curr] || 0;
+                return (
+                  <div key={curr} className="flex flex-col items-center flex-shrink-0 bg-white/40 px-3 py-1.5 rounded-xl border border-white/60 min-w-[70px]">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{curr}</span>
+                    <span className="text-xs lg:text-sm font-black text-slate-700">{rate > 0 ? rate.toFixed(2) : '--'}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
-        {/* Perspective Selection - Reduced Padding */}
-        <div className="rounded-[24px] lg:rounded-[32px] py-4 px-8 bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg flex items-center gap-4 xl:min-w-[300px]">
-          <div className="w-12 h-12 rounded-[18px] flex items-center justify-center bg-slate-900/5 text-slate-500 flex-shrink-0"><User size={24} /></div>
+        {/* Card 2: Member Perspective */}
+        <div className="xl:col-span-3 glass-card rounded-[28px] lg:rounded-[40px] p-4 lg:p-6 bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg flex items-center gap-4 lg:gap-6 min-h-[100px] lg:min-h-[140px]">
+          <div className="w-10 h-10 lg:w-14 lg:h-14 rounded-2xl flex items-center justify-center bg-slate-900/5 text-slate-400 flex-shrink-0"><User size={24} /></div>
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] lg:text-[12px] font-black text-slate-400 uppercase tracking-widest mb-0.5 leading-none">Perspective</p>
-            <select value={selectedMemberId} onChange={(e) => setSelectedMemberId(e.target.value)} className="w-full bg-transparent border-none outline-none font-black text-slate-800 text-lg lg:text-2xl py-0.5 pr-6 appearance-none cursor-pointer truncate">
+            <p className="text-[9px] lg:text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1 leading-none">{isZh ? '视图成员' : 'PERSPECTIVE'}</p>
+            <select value={selectedMemberId} onChange={(e) => setSelectedMemberId(e.target.value)} className="w-full bg-transparent border-none outline-none font-black text-slate-800 text-lg lg:text-2xl appearance-none cursor-pointer truncate pr-6">
               <option value="all">{isZh ? '全体成员' : 'All Members'}</option>
               {data.成员.map(m => <option key={m.成员ID} value={m.成员ID}>{m.成员昵称}</option>)}
             </select>
           </div>
         </div>
+
+        {/* Card 3: Metric Switcher & Value (The Hero Card) */}
+        <div className="xl:col-span-5 glass-card rounded-[28px] lg:rounded-[40px] p-4 lg:p-6 bg-white/50 backdrop-blur-2xl border border-white/80 shadow-2xl flex items-center justify-between gap-6 min-h-[100px] lg:min-h-[140px] relative overflow-hidden group">
+          <div className={`absolute -right-16 -top-16 w-56 h-56 bg-gradient-to-br ${activeMetricData.grad} rounded-full blur-[80px] opacity-60 group-hover:scale-125 transition-transform duration-1000`}></div>
+          
+          <div className="flex items-center gap-4 lg:gap-6 relative z-10 flex-shrink-0">
+             <div className={`w-10 h-10 lg:w-14 lg:h-14 rounded-2xl flex items-center justify-center bg-white shadow-md ${activeMetricData.text}`}>
+               {activeMetricData.icon}
+             </div>
+             <div className="flex flex-col">
+               <span className="text-[9px] lg:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1 leading-none">{isZh ? '核心指标' : 'FOCUS METRIC'}</span>
+               <div className="relative">
+                <select 
+                  value={selectedMetric} 
+                  onChange={(e) => setSelectedMetric(e.target.value as any)} 
+                  className="bg-transparent border-none outline-none font-black text-slate-800 text-base lg:text-xl appearance-none cursor-pointer pr-6 hover:text-indigo-600 transition-colors"
+                >
+                  <option value="netWorth">{isZh ? '净资产' : 'Net Worth'}</option>
+                  <option value="liquid">{isZh ? '流动资产' : 'Liquid Assets'}</option>
+                  <option value="fixed">{isZh ? '固定资产' : 'Fixed Assets'}</option>
+                  <option value="loan">{isZh ? '债务净额' : 'Net Loans'}</option>
+                </select>
+                <ChevronDown size={14} className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none opacity-30" />
+               </div>
+             </div>
+          </div>
+
+          <div className="relative z-10 text-right flex flex-col items-end">
+             <div className="flex items-baseline gap-2">
+               <span className={`text-3xl lg:text-5xl font-black tracking-tighter leading-none ${activeMetricData.value < 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+                 {Math.round(activeMetricData.value).toLocaleString()}
+               </span>
+               <span className="text-[10px] lg:text-sm font-black text-slate-400 uppercase tracking-widest">{displayCurrency}</span>
+             </div>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6">
-        <StatCard label={isZh ? "净资产" : "Net Worth"} value={calculations.netWorth} currency={displayCurrency} icon={<TrendingUp size={24} />} grad="from-blue-500/20 to-indigo-500/10" text="text-indigo-600" />
-        <StatCard label={isZh ? "流动资产" : "Liquid"} value={calculations.liquidTotal} currency={displayCurrency} icon={<Wallet size={24} />} grad="from-emerald-500/20 to-teal-500/10" text="text-emerald-600" />
-        <StatCard label={isZh ? "固定资产" : "Fixed"} value={calculations.fixedTotal} currency={displayCurrency} icon={<Home size={24} />} grad="from-orange-500/20 to-amber-500/10" text="text-amber-600" />
-        <StatCard label={isZh ? "债务净额" : "Net Loans"} value={calculations.loanNet} currency={displayCurrency} icon={<Landmark size={24} />} grad="from-pink-500/20 to-purple-500/10" text="text-purple-600" />
-      </div>
-
+      {/* Grid below: Distributions & Snapshot remains consistent */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-10">
+        {/* Risk Pie Chart */}
         <div className="p-8 lg:p-10 rounded-[40px] bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg">
           <div className="flex items-center gap-4 mb-6">
             <div className="p-2.5 bg-blue-600/10 text-blue-600 rounded-xl"><PieIcon size={20} /></div>
@@ -265,11 +273,7 @@ const DashboardView: React.FC = () => {
               <PieChart>
                 <Pie data={calculations.riskData} innerRadius={80} outerRadius={120} paddingAngle={8} dataKey="value" stroke="none">
                   {calculations.riskData.map((entry, index) => (
-                    <Cell 
-                      key={index} 
-                      fill={RISK_COLORS[entry.name] || DEFAULT_COLORS[index % DEFAULT_COLORS.length]} 
-                      cornerRadius={12} 
-                    />
+                    <Cell key={index} fill={RISK_COLORS[entry.name] || DEFAULT_COLORS[index % DEFAULT_COLORS.length]} cornerRadius={12} />
                   ))}
                 </Pie>
                 <Tooltip 
@@ -282,6 +286,7 @@ const DashboardView: React.FC = () => {
           </div>
         </div>
 
+        {/* Snapshot Highlights */}
         <div className="lg:col-span-2 p-8 lg:p-10 rounded-[40px] bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg overflow-hidden">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
             <h3 className="text-xl lg:text-3xl font-black text-slate-800 tracking-tight">{isZh ? '核心资产快照' : 'Snapshot Highlights'}</h3>
@@ -321,11 +326,8 @@ const DashboardView: React.FC = () => {
                         >
                           {(acc as any).char}
                         </div>
-                        
                         <div className="flex items-center gap-3">
-                          <span className="font-black text-slate-900 text-sm lg:text-xl tracking-tight">
-                            {String(acc.账户昵称)}
-                          </span>
+                          <span className="font-black text-slate-900 text-sm lg:text-xl tracking-tight">{String(acc.账户昵称)}</span>
                           <span className={`text-[8px] lg:text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md flex-shrink-0 ${acc.type === 'liquid' ? 'bg-blue-100 text-blue-600' : acc.type === 'fixed' ? 'bg-amber-100 text-amber-600' : 'bg-purple-100 text-purple-600'}`}>
                             {acc.type === 'liquid' ? (isZh ? '流动' : 'LIQ') : acc.type === 'fixed' ? (isZh ? '固定' : 'FIX') : (isZh ? '债务' : 'DBT')}
                           </span>
@@ -354,24 +356,5 @@ const DashboardView: React.FC = () => {
     </div>
   );
 };
-
-// Modified StatCard: flatter, smaller numbers, less padding
-const StatCard: React.FC<{ label: string, value: number, currency: string, icon: React.ReactNode, grad: string, text: string }> = ({ label, value, currency, icon, grad, text }) => (
-  <div className={`p-6 lg:p-8 bg-white/40 backdrop-blur-xl border border-white/60 rounded-[32px] lg:rounded-[44px] shadow-lg relative overflow-hidden flex flex-col justify-center min-h-[120px] lg:min-h-[160px] group transition-all duration-700`}>
-    <div className={`absolute -right-10 -top-10 w-40 h-40 lg:w-56 lg:h-56 bg-gradient-to-br ${grad} rounded-full blur-[70px] opacity-60 group-hover:scale-125 transition-transform duration-1000`}></div>
-    <div className="relative z-10 space-y-3 lg:space-y-4">
-       <div className="flex items-center gap-4">
-          <div className={`w-10 h-10 lg:w-14 lg:h-14 rounded-[16px] flex items-center justify-center bg-white shadow-md ${text}`}>{icon}</div>
-          <p className="text-base lg:text-2xl font-black uppercase tracking-tighter text-slate-800 opacity-90 leading-none">{label}</p>
-       </div>
-       <div className="flex items-baseline gap-2 lg:gap-3 overflow-hidden">
-         <h4 className={`text-2xl lg:text-4xl font-black tracking-tighter leading-none ${value < 0 ? 'text-rose-600' : 'text-slate-900'}`}>
-           {value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-         </h4>
-         <span className="text-[10px] lg:text-[14px] font-black text-slate-400 tracking-widest uppercase">{currency}</span>
-       </div>
-    </div>
-  </div>
-);
 
 export default DashboardView;
