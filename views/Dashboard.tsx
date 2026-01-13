@@ -7,7 +7,7 @@ import {
 } from 'recharts';
 import { 
   TrendingUp, Wallet, Home, Landmark, Globe, User, Filter, 
-  BarChart3, ChevronDown, Calendar, ArrowUpRight 
+  BarChart3, ChevronDown, Calendar, ArrowUpRight, Clock 
 } from 'lucide-react';
 
 const DashboardView: React.FC = () => {
@@ -103,6 +103,7 @@ const DashboardView: React.FC = () => {
         ...acc, 
         latestVal: val, 
         latestCur: cur, 
+        latestDate: latest ? latest.时间 : '—',
         converted: convert(val, cur), 
         risk: normalizeRisk(acc.风险评估, isZh), 
         type: 'liquid',
@@ -119,6 +120,7 @@ const DashboardView: React.FC = () => {
         ...asset, 
         latestVal: val, 
         latestCur: cur, 
+        latestDate: latest ? latest.时间 : (asset.购入时间 || '—'),
         converted: convert(val, cur), 
         risk: isZh ? '低' : 'Low', 
         type: 'fixed',
@@ -323,6 +325,7 @@ const DashboardView: React.FC = () => {
                   <th className="px-10 pb-4">{isZh ? '所有者' : 'SOVEREIGN'}</th>
                   <th className="px-10 pb-4">{isZh ? '机构 / 类型' : 'INSTITUTION'}</th>
                   <th className="px-10 pb-4">{isZh ? '风险剖面' : 'RISK PROFILE'}</th>
+                  <th className="px-10 pb-4">{isZh ? '最后更新' : 'LAST UPDATE'}</th>
                   <th className="px-10 pb-4 text-right">{isZh ? '原始账面' : 'BOOK VALUE'}</th>
                   <th className="px-10 pb-4 text-right">{isZh ? '折算估值' : 'MARKET VAL'}</th>
                 </tr>
@@ -375,6 +378,12 @@ const DashboardView: React.FC = () => {
                       </td>
                       <td className="px-10 py-7">
                         <span className="px-3 py-1 rounded-xl text-[10px] lg:text-[12px] font-black uppercase tracking-widest border-2 shadow-sm" style={{ color: RISK_COLORS[acc.risk], borderColor: RISK_COLORS[acc.risk] + '30', backgroundColor: RISK_COLORS[acc.risk] + '05' }}>{acc.risk}</span>
+                      </td>
+                      <td className="px-10 py-7">
+                        <div className="flex items-center gap-2 text-slate-400">
+                          <Clock size={14} className="opacity-50" />
+                          <span className="text-[10px] lg:text-[13px] font-black tracking-tight">{acc.latestDate}</span>
+                        </div>
                       </td>
                       <td className="px-10 py-7 text-right">
                         <div className="flex flex-col items-end">
