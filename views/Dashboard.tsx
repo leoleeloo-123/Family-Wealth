@@ -1,5 +1,5 @@
 
-import React, { useContext, useMemo, useState } from 'react';
+import React, { useContext, useMemo, useState, useRef, useEffect } from 'react';
 import { AppContext } from '../App';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, 
@@ -27,6 +27,15 @@ const DashboardView: React.FC = () => {
 
   const isZh = settings.language === 'zh';
 
+  const [displayCurrency, setDisplayCurrency] = useState<string>('CNY');
+  const [selectedMemberId, setSelectedMemberId] = useState<string>('all');
+  const [snapshotTypeFilter, setSnapshotTypeFilter] = useState<'all' | 'liquid' | 'fixed'>('liquid');
+  const [trendType, setTrendType] = useState<'total' | 'liquid' | 'fixed'>('liquid');
+
+  // Scroll Sync Refs
+  const topScrollRef = useRef<HTMLDivElement>(null);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+
   const availableCurrencies = useMemo(() => {
     const currencies = new Set<string>();
     data.汇率.forEach(rate => {
@@ -40,13 +49,6 @@ const DashboardView: React.FC = () => {
     if (currencies.size === 0) currencies.add('CNY');
     return Array.from(currencies).filter(Boolean).sort();
   }, [data, settings.baseCurrency]);
-
-  const [displayCurrency, setDisplayCurrency] = useState<string>(
-    availableCurrencies.includes('CNY') ? 'CNY' : (availableCurrencies[0] || 'CNY')
-  );
-  const [selectedMemberId, setSelectedMemberId] = useState<string>('all');
-  const [snapshotTypeFilter, setSnapshotTypeFilter] = useState<'all' | 'liquid' | 'fixed'>('liquid');
-  const [trendType, setTrendType] = useState<'total' | 'liquid' | 'fixed'>('liquid');
 
   const exchangeRatesMap = useMemo(() => {
     const rates: Record<string, number> = {};
@@ -80,13 +82,6 @@ const DashboardView: React.FC = () => {
     return rates;
   }, [data.汇率, displayCurrency]);
 
-  const normalizeRisk = (level: string, isZh: boolean) => {
-    const mapping: any = { '极高': 'Very High', '高': 'High', '中': 'Medium', '低': 'Low', '未知': 'Unknown' };
-    const standard = mapping[level] || level || 'Unknown';
-    const reverseMap: any = { 'Very High': isZh ? '极高' : 'Very High', 'High': isZh ? '高' : 'High', 'Medium': isZh ? '中' : 'Medium', 'Low': isZh ? '低' : 'Low', 'Unknown': isZh ? '未知' : 'Unknown' };
-    return reverseMap[standard] || standard;
-  };
-
   const RISK_COLORS: Record<string, string> = {
     'Low': '#10b981', '低': '#10b981',
     'Medium': '#f59e0b', '中': '#f59e0b',
@@ -103,20 +98,15 @@ const DashboardView: React.FC = () => {
       return rateFactor ? amount / rateFactor : 0;
     };
 
-    // Robust color resolution helper
     const resolveColor = (acc: any, type: 'liquid' | 'fixed') => {
       if (type === 'liquid') {
         const instById = data.机构.find(i => i.机构ID === acc.机构ID);
         if (instById?.代表色HEX) return instById.代表色HEX;
-        
         const instByName = data.机构.find(i => i.机构名称 === acc.机构名称);
         if (instByName?.代表色HEX) return instByName.代表色HEX;
-        
         return generateColorFromString(acc.机构名称 || acc.账户昵称 || 'Default');
       } else {
-        const fixedAssetColors: Record<string, string> = {
-          '房地产': '#6366f1', '车辆': '#06b6d4', '股权': '#8b5cf6', '珠宝': '#f43f5e', '其他': '#64748b'
-        };
+        const fixedAssetColors: Record<string, string> = { '房地产': '#6366f1', '车辆': '#06b6d4', '股权': '#8b5cf6', '珠宝': '#f43f5e', '其他': '#64748b' };
         return fixedAssetColors[acc.固定资产类型] || generateColorFromString(acc.资产昵称 || 'Fixed');
       }
     };
@@ -126,16 +116,7 @@ const DashboardView: React.FC = () => {
       const latest = records[0];
       const val = latest ? Number(latest.市值) || 0 : 0;
       const cur = latest ? latest.币种 : acc.币种;
-      return { 
-        ...acc, 
-        latestVal: val, 
-        latestCur: cur, 
-        latestDate: latest ? latest.时间 : '—',
-        converted: convert(val, cur), 
-        risk: normalizeRisk(acc.风险评估, isZh), 
-        type: 'liquid',
-        resolvedColor: resolveColor(acc, 'liquid')
-      };
+      return { ...acc, latestVal: val, latestCur: cur, latestDate: latest ? latest.时间 : '—', converted: convert(val, cur), risk: isZh ? (acc.风险评估 || '未知') : (acc.风险评估 || 'Unknown'), type: 'liquid', resolvedColor: resolveColor(acc, 'liquid') };
     });
 
     const allLatestFixed = data.固定资产.map(asset => {
@@ -143,16 +124,7 @@ const DashboardView: React.FC = () => {
       const latest = records[0];
       const val = latest ? Number(latest.估值) || 0 : Number(asset.购入价格) || 0;
       const cur = latest ? latest.币种 : asset.币种;
-      return { 
-        ...asset, 
-        latestVal: val, 
-        latestCur: cur, 
-        latestDate: latest ? latest.时间 : (asset.购入时间 || '—'),
-        converted: convert(val, cur), 
-        risk: isZh ? '低' : 'Low', 
-        type: 'fixed',
-        resolvedColor: resolveColor(asset, 'fixed')
-      };
+      return { ...asset, latestVal: val, latestCur: cur, latestDate: latest ? latest.时间 : (asset.购入时间 || '—'), converted: convert(val, cur), risk: isZh ? '低' : 'Low', type: 'fixed', resolvedColor: resolveColor(asset, 'fixed') };
     });
 
     const filteredLiquid = selectedMemberId === 'all' ? allLatestLiquid : allLatestLiquid.filter(a => a.成员ID === selectedMemberId);
@@ -223,6 +195,22 @@ const DashboardView: React.FC = () => {
     return { netWorth, liquidTotal, fixedTotal, loanNet, trendData, snapshots, barData, RISK_LEVELS };
   }, [data, displayCurrency, selectedMemberId, trendType, snapshotTypeFilter, isZh, exchangeRatesMap]);
 
+  // Sync scroll positions
+  const onTopScroll = () => {
+    if (tableContainerRef.current && topScrollRef.current) {
+      tableContainerRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+    }
+  };
+  const onTableScroll = () => {
+    if (tableContainerRef.current && topScrollRef.current) {
+      topScrollRef.current.scrollLeft = tableContainerRef.current.scrollLeft;
+    }
+  };
+
+  useEffect(() => {
+    onTableScroll();
+  }, [snapshotTypeFilter, calculations.snapshots]);
+
   const StatCard = ({ label, value, icon, colorClass, grad }: any) => (
     <div className="glass-card rounded-[32px] p-8 flex flex-col items-center justify-center relative overflow-hidden group shadow-lg border-white/60 min-h-[160px] w-full transition-all hover:scale-[1.02] hover:shadow-2xl">
       <div className={`absolute -right-8 -top-8 w-32 h-32 bg-gradient-to-br ${grad} rounded-full blur-[50px] opacity-40 group-hover:scale-150 transition-transform duration-1000`}></div>
@@ -244,7 +232,7 @@ const DashboardView: React.FC = () => {
   return (
     <div className="space-y-8 animate-in fade-in duration-700 w-full px-2 sm:px-6 lg:px-10 max-w-full overflow-x-hidden">
       
-      {/* Row 1: Metrics */}
+      {/* Metrics Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 lg:gap-10">
         <StatCard label={isZh ? "净资产" : "NET WORTH"} value={calculations.netWorth} icon={<TrendingUp />} colorClass="text-indigo-600" grad="from-indigo-500/30 to-blue-500/10" />
         <StatCard label={isZh ? "流动资产" : "LIQUID"} value={calculations.liquidTotal} icon={<Wallet />} colorClass="text-emerald-600" grad="from-emerald-500/30 to-teal-500/10" />
@@ -259,9 +247,7 @@ const DashboardView: React.FC = () => {
             <div className="flex flex-col">
               <h3 className="text-3xl lg:text-5xl font-black text-slate-800 tracking-tighter leading-none">{isZh ? '核心资产透视' : 'Core Asset Perspective'}</h3>
               <div className="flex flex-wrap items-center gap-3 mt-4">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-2">
-                   {isZh ? '当前基准汇率:' : 'FX BENCHMARK:'}
-                </p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-2">{isZh ? '当前基准汇率:' : 'FX BENCHMARK:'}</p>
                 <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
                   {availableCurrencies.filter(c => c !== displayCurrency && (c === 'CNY' || c === 'USD' || c === 'HKD')).map(curr => {
                     const rate = exchangeRatesMap[curr] || 0;
@@ -343,7 +329,20 @@ const DashboardView: React.FC = () => {
               ))}
             </div>
           </div>
-          <div className="overflow-x-auto custom-scrollbar-wide">
+
+          <div 
+            ref={topScrollRef}
+            onScroll={onTopScroll}
+            className="overflow-x-auto custom-scrollbar-wide bg-slate-50/20 border-b border-white/10"
+          >
+            <div style={{ width: tableContainerRef.current?.scrollWidth || '100%', height: '1px' }}></div>
+          </div>
+
+          <div 
+            ref={tableContainerRef}
+            onScroll={onTableScroll}
+            className="overflow-x-auto custom-scrollbar-wide"
+          >
             <table className="w-full text-left border-separate border-spacing-y-5">
               <thead>
                 <tr className="text-[11px] lg:text-[13px] uppercase tracking-[0.4em] text-slate-400 font-black">
@@ -357,16 +356,11 @@ const DashboardView: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {calculations.snapshots.map((acc: any, idx) => {
-                  const brandColor = acc.resolvedColor;
-                  return (
+                {calculations.snapshots.map((acc: any, idx) => (
                     <tr key={idx} className="bg-white/40 hover:bg-white/80 transition-all duration-500 rounded-[32px] group shadow-sm hover:shadow-xl hover:-translate-y-1">
                       <td className="px-10 py-7 rounded-l-[32px]">
                         <div className="flex items-center gap-6">
-                          <div 
-                            className="w-12 h-12 lg:w-16 lg:h-16 rounded-[22px] shadow-lg flex items-center justify-center text-white font-black text-sm lg:text-xl transition-transform group-hover:rotate-6" 
-                            style={{ backgroundColor: brandColor }}
-                          >
+                          <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-[22px] shadow-lg flex items-center justify-center text-white font-black text-sm lg:text-xl transition-transform group-hover:rotate-6" style={{ backgroundColor: acc.resolvedColor }}>
                             {String(acc.账户昵称 || acc.资产昵称)[0]}
                           </div>
                           <div className="flex flex-col">
@@ -380,29 +374,11 @@ const DashboardView: React.FC = () => {
                       </td>
                       <td className="px-10 py-7">
                         <div className="flex flex-col gap-2.5">
-                          <div 
-                            className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full border shadow-sm transition-all group-hover:shadow-md max-w-fit"
-                            style={{ 
-                              backgroundColor: `${brandColor}12`, 
-                              borderColor: `${brandColor}35` 
-                            }}
-                          >
-                            <div 
-                              className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black text-white shadow-inner"
-                              style={{ backgroundColor: brandColor }}
-                            >
-                              {String(acc.机构名称 || acc.资产昵称 || 'D')[0]}
-                            </div>
-                            <span 
-                              className="text-[12px] font-black tracking-tight"
-                              style={{ color: brandColor }}
-                            >
-                              {acc.机构名称 || (isZh ? '直接持有' : 'Direct')}
-                            </span>
+                          <div className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full border shadow-sm transition-all group-hover:shadow-md max-w-fit" style={{ backgroundColor: `${acc.resolvedColor}12`, borderColor: `${acc.resolvedColor}35` }}>
+                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black text-white shadow-inner" style={{ backgroundColor: acc.resolvedColor }}>{String(acc.机构名称 || acc.资产昵称 || 'D')[0]}</div>
+                            <span className="text-[12px] font-black tracking-tight" style={{ color: acc.resolvedColor }}>{acc.机构名称 || (isZh ? '直接持有' : 'Direct')}</span>
                           </div>
-                          <span className="text-[9px] lg:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">
-                            {acc.资产类型 || acc.固定资产类型 || 'Asset'}
-                          </span>
+                          <span className="text-[9px] lg:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">{acc.资产类型 || acc.固定资产类型 || 'Asset'}</span>
                         </div>
                       </td>
                       <td className="px-10 py-7">
@@ -427,8 +403,7 @@ const DashboardView: React.FC = () => {
                         </div>
                       </td>
                     </tr>
-                  );
-                })}
+                ))}
               </tbody>
             </table>
           </div>
@@ -447,46 +422,33 @@ const DashboardView: React.FC = () => {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={calculations.barData} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
               <CartesianGrid strokeDasharray="5 5" vertical={false} stroke="rgba(0,0,0,0.03)" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 13, fontWeight: 900, fill: '#64748b' }} dy={15} />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 13, fontWeights: 900, fill: '#64748b' }} dy={15} />
               <YAxis hide domain={[0, 100]} />
-              <Tooltip 
-                cursor={{ fill: 'rgba(0,0,0,0.02)' }}
-                content={({ active, payload, label }) => {
-                  if (active && payload && payload.length) {
-                    return (
-                      <div className="bg-white/95 backdrop-blur-3xl p-6 rounded-[32px] shadow-4xl border border-slate-100 min-w-[280px]">
-                        <p className="font-black text-slate-900 text-xl mb-4 border-b border-slate-50 pb-3">{label}</p>
-                        <div className="space-y-3">
-                          {payload.slice().reverse().map((entry: any, idx) => (
-                            <div key={idx} className="flex items-center justify-between text-xs lg:text-sm">
-                              <span className="font-black text-slate-500 uppercase tracking-widest flex items-center gap-3">
-                                <div className="w-3 h-3 rounded-full" style={{backgroundColor: entry.fill}}></div> 
-                                {entry.name}
-                              </span>
-                              <div className="text-right">
-                                <span className="font-black text-slate-900">{Math.round(entry.payload[`${entry.name}_val`]).toLocaleString()}</span>
-                                <span className="text-[10px] ml-2 font-black text-slate-400 uppercase">{displayCurrency}</span>
-                              </div>
+              <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} content={({ active, payload, label }) => {
+                if (active && payload && payload.length) {
+                  return (
+                    <div className="bg-white/95 backdrop-blur-3xl p-6 rounded-[32px] shadow-4xl border border-slate-100 min-w-[280px]">
+                      <p className="font-black text-slate-900 text-xl mb-4 border-b border-slate-50 pb-3">{label}</p>
+                      <div className="space-y-3">
+                        {payload.slice().reverse().map((entry: any, idx) => (
+                          <div key={idx} className="flex items-center justify-between text-xs lg:text-sm">
+                            <span className="font-black text-slate-500 uppercase tracking-widest flex items-center gap-3"><div className="w-3 h-3 rounded-full" style={{backgroundColor: entry.fill}}></div> {entry.name}</span>
+                            <div className="text-right">
+                              <span className="font-black text-slate-900">{Math.round(entry.payload[`${entry.name}_val`]).toLocaleString()}</span>
+                              <span className="text-[10px] ml-2 font-black text-slate-400 uppercase">{displayCurrency}</span>
                             </div>
-                          ))}
-                        </div>
+                          </div>
+                        ))}
                       </div>
-                    );
-                  }
-                  return null;
-                }}
-              />
+                    </div>
+                  );
+                }
+                return null;
+              }} />
               <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: 50 }} formatter={(val) => <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">{val}</span>} />
-              {calculations.RISK_LEVELS.map(level => (
-                <Bar key={level} dataKey={level} stackId="a" fill={RISK_COLORS[level]} barSize={80} radius={[0, 0, 0, 0]} />
-              ))}
+              {calculations.RISK_LEVELS.map(level => <Bar key={level} dataKey={level} stackId="a" fill={RISK_COLORS[level]} barSize={80} radius={[0, 0, 0, 0]} />)}
             </BarChart>
           </ResponsiveContainer>
-        </div>
-        <div className="mt-8 flex items-center justify-center gap-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] opacity-40">
-           <div className="w-12 h-px bg-slate-400"></div>
-           {isZh ? '※ 柱高统一折算为 100% 占比以方便成员间横向对比风险偏好' : '※ Columns are normalized to 100% to compare risk appetite across members'}
-           <div className="w-12 h-px bg-slate-400"></div>
         </div>
       </div>
     </div>

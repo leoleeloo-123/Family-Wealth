@@ -1,5 +1,5 @@
 
-import React, { useContext, useState, useMemo } from 'react';
+import React, { useContext, useState, useMemo, useRef, useEffect } from 'react';
 import { AppContext } from '../App';
 import { 
   Plus, 
@@ -35,6 +35,10 @@ const MasterDataView: React.FC = () => {
   const [originalRecordToUpdate, setOriginalRecordToUpdate] = useState<any>(null);
   const [errorRows, setErrorRows] = useState<number[]>([]);
 
+  // Scroll Sync Refs
+  const topScrollRef = useRef<HTMLDivElement>(null);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+
   const isZh = settings.language === 'zh';
   const masterTabs: TabName[] = ['成员', '机构', '手机', '账户', '保险', '汇率', '固定资产'];
   
@@ -52,25 +56,26 @@ const MasterDataView: React.FC = () => {
     '受益人': { idField: '受益人ID', source: '成员', lookupKey: '成员昵称' },
   };
 
-  const getNextId = (tab: TabName, currentEditingRows: any[] = []) => {
-    const records = data[tab] as any[];
-    const allRecords = [...records, ...currentEditingRows];
-    const prefixes: Record<string, string> = { '成员': 'M', '机构': 'INST', '手机': 'DEV', '账户': 'ACC', '保险': 'INS', '汇率': 'FX', '固定资产': 'FIX' };
-    const prefix = prefixes[tab] || 'ID';
-    const tabIdCol = EXCEL_STRUCTURE[tab][0];
-    let maxNum = 0;
-    allRecords.forEach(r => {
-      const idStr = String(r[tabIdCol] || '');
-      const numPart = idStr.replace(prefix, '');
-      const num = parseInt(numPart, 10);
-      if (!isNaN(num) && num > maxNum) maxNum = num;
-    });
-    return `${prefix}${String(maxNum + 1).padStart(3, '0')}`;
-  };
-
   const filteredData = (data[activeTab] as any[]).filter(item => 
     Object.values(item).some(val => String(val || '').toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  // Sync scroll positions
+  const onTopScroll = () => {
+    if (tableContainerRef.current && topScrollRef.current) {
+      tableContainerRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+    }
+  };
+  const onTableScroll = () => {
+    if (tableContainerRef.current && topScrollRef.current) {
+      topScrollRef.current.scrollLeft = tableContainerRef.current.scrollLeft;
+    }
+  };
+
+  // Re-sync widths on data/tab change
+  useEffect(() => {
+    onTableScroll();
+  }, [activeTab, filteredData]);
 
   const handleDelete = (idKey: string, idVal: string) => {
     const confirmMsg = isZh ? `确定要永久删除 [${idVal}] 吗？` : `Confirm delete [${idVal}]?`;
@@ -97,6 +102,22 @@ const MasterDataView: React.FC = () => {
     setEditingRows([{ ...record }]);
     setErrorRows([]);
     setIsModalOpen(true);
+  };
+
+  const getNextId = (tab: TabName, currentEditingRows: any[] = []) => {
+    const records = data[tab] as any[];
+    const allRecords = [...records, ...currentEditingRows];
+    const prefixes: Record<string, string> = { '成员': 'M', '机构': 'INST', '手机': 'DEV', '账户': 'ACC', '保险': 'INS', '汇率': 'FX', '固定资产': 'FIX' };
+    const prefix = prefixes[tab] || 'ID';
+    const tabIdCol = EXCEL_STRUCTURE[tab][0];
+    let maxNum = 0;
+    allRecords.forEach(r => {
+      const idStr = String(r[tabIdCol] || '');
+      const numPart = idStr.replace(prefix, '');
+      const num = parseInt(numPart, 10);
+      if (!isNaN(num) && num > maxNum) maxNum = num;
+    });
+    return `${prefix}${String(maxNum + 1).padStart(3, '0')}`;
   };
 
   const createEmptyRow = (tab: TabName, customId?: string) => {
@@ -132,7 +153,6 @@ const MasterDataView: React.FC = () => {
     const mapping = linkedFieldsMapping[field];
     if (mapping && mapping.source !== modalTab) {
       const sourceData = data[mapping.source] as any[];
-      // Try fuzzy match if exact match fails
       const matched = sourceData.find(item => String(item[mapping.lookupKey] || '').trim().toLowerCase() === String(value || '').trim().toLowerCase());
       if (matched) {
         const sourceIdKey = EXCEL_STRUCTURE[mapping.source][0];
@@ -248,7 +268,22 @@ const MasterDataView: React.FC = () => {
       </div>
 
       <div className="glass-card rounded-[48px] border border-white/60 shadow-2xl overflow-hidden relative transition-all duration-700">
-        <div className="overflow-x-auto custom-scrollbar-wide">
+        
+        {/* Top Scroll Sync Area */}
+        <div 
+          ref={topScrollRef}
+          onScroll={onTopScroll}
+          className="overflow-x-auto custom-scrollbar-wide bg-slate-50/20 border-b border-white/10"
+        >
+          {/* Transparent spacer to match table width */}
+          <div style={{ width: tableContainerRef.current?.scrollWidth || '100%', height: '1px' }}></div>
+        </div>
+
+        <div 
+          ref={tableContainerRef}
+          onScroll={onTableScroll}
+          className="overflow-x-auto custom-scrollbar-wide"
+        >
           <table className="w-full text-left border-separate border-spacing-0">
             <thead className="bg-white/40 backdrop-blur-3xl sticky top-0 z-10">
               <tr>
