@@ -15,11 +15,6 @@ const DashboardView: React.FC = () => {
   if (!context) return null;
   const { data, settings } = context;
 
-  const [displayCurrency, setDisplayCurrency] = useState<string>(settings.baseCurrency);
-  const [selectedMemberId, setSelectedMemberId] = useState<string>('all');
-  const [snapshotTypeFilter, setSnapshotTypeFilter] = useState<'all' | 'liquid' | 'fixed'>('all');
-  const [trendType, setTrendType] = useState<'total' | 'liquid' | 'fixed'>('total');
-
   const isZh = settings.language === 'zh';
 
   const availableCurrencies = useMemo(() => {
@@ -32,8 +27,16 @@ const DashboardView: React.FC = () => {
     data.固定资产.forEach(asset => { if (asset.币种) currencies.add(asset.币种); });
     data.流动资产记录.forEach(r => { if (r.币种) currencies.add(r.币种); });
     if (settings.baseCurrency) currencies.add(settings.baseCurrency);
+    if (currencies.size === 0) currencies.add('CNY');
     return Array.from(currencies).filter(Boolean).sort();
   }, [data, settings.baseCurrency]);
+
+  const [displayCurrency, setDisplayCurrency] = useState<string>(
+    availableCurrencies.includes('CNY') ? 'CNY' : (availableCurrencies[0] || 'CNY')
+  );
+  const [selectedMemberId, setSelectedMemberId] = useState<string>('all');
+  const [snapshotTypeFilter, setSnapshotTypeFilter] = useState<'all' | 'liquid' | 'fixed'>('liquid');
+  const [trendType, setTrendType] = useState<'total' | 'liquid' | 'fixed'>('liquid');
 
   const exchangeRatesMap = useMemo(() => {
     const rates: Record<string, number> = {};
@@ -41,12 +44,14 @@ const DashboardView: React.FC = () => {
     rates[base] = 1;
     const adj: Record<string, Record<string, number>> = {};
     const sortedRates = [...data.汇率].sort((a, b) => new Date(b.时间).getTime() - new Date(a.时间).getTime());
+    
     sortedRates.forEach(r => {
       const b = r.基准币种; const q = r.报价币种; const val = Number(r.汇率);
       if (!b || !q || isNaN(val) || val === 0) return;
       if (!adj[b]) adj[b] = {}; if (!adj[b][q]) adj[b][q] = val;
       if (!adj[q]) adj[q] = {}; if (!adj[q][b]) adj[q][b] = 1 / val;
     });
+
     const visited = new Set<string>();
     const queue: Array<{ node: string; factor: number }> = [{ node: base, factor: 1 }];
     visited.add(base);
@@ -89,11 +94,20 @@ const DashboardView: React.FC = () => {
     };
 
     const allLatestLiquid = data.账户.map(acc => {
+      const inst = data.机构.find(i => i.机构ID === acc.机构ID);
       const records = data.流动资产记录.filter(r => r.账户ID === acc.账户ID).sort((a, b) => new Date(b.时间).getTime() - new Date(a.时间).getTime());
       const latest = records[0];
       const val = latest ? Number(latest.市值) || 0 : 0;
       const cur = latest ? latest.币种 : acc.币种;
-      return { ...acc, latestVal: val, latestCur: cur, converted: convert(val, cur), risk: normalizeRisk(acc.风险评估, isZh), type: 'liquid' };
+      return { 
+        ...acc, 
+        latestVal: val, 
+        latestCur: cur, 
+        converted: convert(val, cur), 
+        risk: normalizeRisk(acc.风险评估, isZh), 
+        type: 'liquid',
+        代表色HEX: inst?.代表色HEX || '#6366f1'
+      };
     });
 
     const allLatestFixed = data.固定资产.map(asset => {
@@ -101,7 +115,15 @@ const DashboardView: React.FC = () => {
       const latest = records[0];
       const val = latest ? Number(latest.估值) || 0 : Number(asset.购入价格) || 0;
       const cur = latest ? latest.币种 : asset.币种;
-      return { ...asset, latestVal: val, latestCur: cur, converted: convert(val, cur), risk: isZh ? '低' : 'Low', type: 'fixed' };
+      return { 
+        ...asset, 
+        latestVal: val, 
+        latestCur: cur, 
+        converted: convert(val, cur), 
+        risk: isZh ? '低' : 'Low', 
+        type: 'fixed',
+        代表色HEX: '#64748b'
+      };
     });
 
     const filteredLiquid = selectedMemberId === 'all' ? allLatestLiquid : allLatestLiquid.filter(a => a.成员ID === selectedMemberId);
@@ -191,7 +213,7 @@ const DashboardView: React.FC = () => {
   );
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700 w-full px-2 sm:px-6 lg:px-10">
+    <div className="space-y-8 animate-in fade-in duration-700 w-full px-2 sm:px-6 lg:px-10 max-w-full overflow-x-hidden">
       
       {/* Row 1: 4 Full-Width Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 lg:gap-10">
@@ -201,22 +223,23 @@ const DashboardView: React.FC = () => {
         <StatCard label={isZh ? "债务净额" : "NET LOANS"} value={calculations.loanNet} icon={<Landmark />} colorClass="text-purple-600" grad="from-pink-500/30 to-purple-500/10" />
       </div>
 
-      {/* Row 2: Core Asset Perspective (Trends + Table) - Spans Entire Width */}
+      {/* Row 2: Core Asset Perspective (Trends + Table) */}
       <div className="glass-card rounded-[48px] border-white/60 shadow-2xl overflow-hidden flex flex-col bg-white/20 backdrop-blur-xl">
-        {/* Header with All Selectors */}
         <div className="p-10 lg:p-14 border-b border-white/20 bg-white/40 flex flex-col lg:flex-row items-center justify-between gap-8">
           <div className="flex flex-col sm:flex-row items-center gap-6 xl:gap-10">
             <div className="p-4 bg-indigo-600 text-white rounded-[24px] shadow-xl shadow-indigo-200"><ArrowUpRight size={28} strokeWidth={3} /></div>
             <div className="flex flex-col">
               <h3 className="text-3xl lg:text-5xl font-black text-slate-800 tracking-tighter leading-none">{isZh ? '核心资产透视' : 'Core Asset Perspective'}</h3>
-              <div className="flex items-center gap-3 mt-3">
-                <p className="text-xs font-black text-slate-400 uppercase tracking-[0.4em]">{isZh ? '当前基准汇率:' : 'FX BENCHMARK:'}</p>
-                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-[400px]">
+              <div className="flex flex-wrap items-center gap-3 mt-4">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-2">
+                   {isZh ? '当前基准汇率:' : 'FX BENCHMARK:'}
+                </p>
+                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
                   {availableCurrencies.filter(c => c !== displayCurrency && (c === 'CNY' || c === 'USD' || c === 'HKD')).map(curr => {
                     const rate = exchangeRatesMap[curr] || 0;
                     return (
-                      <span key={curr} className="text-[10px] font-black uppercase text-blue-600/80 bg-blue-50/50 px-2 py-1 rounded-lg border border-blue-100 whitespace-nowrap">
-                        {isZh ? `兑换${curr === 'CNY' ? '人民币' : curr === 'HKD' ? '港币' : curr}:` : `to ${curr}:`} {rate > 0 ? rate.toFixed(2) : '--'}
+                      <span key={curr} className="text-[10px] font-black uppercase text-blue-600 bg-blue-50/80 px-2.5 py-1 rounded-lg border border-blue-100/50 whitespace-nowrap shadow-sm">
+                        {isZh ? (curr === 'CNY' ? '兑换人民币' : curr === 'HKD' ? '兑换港币' : `兑换${curr}`) : `to ${curr}`}: {rate > 0 ? rate.toFixed(2) : '--'}
                       </span>
                     );
                   })}
@@ -226,22 +249,19 @@ const DashboardView: React.FC = () => {
           </div>
           
           <div className="flex flex-wrap items-center justify-center md:justify-end gap-4 lg:gap-6">
-            {/* Member Selector */}
-            <div className="flex items-center gap-4 bg-white/80 px-6 py-3 rounded-[24px] border border-white shadow-sm transition-all hover:shadow-md">
+            <div className="flex items-center gap-4 bg-white/80 px-6 py-3 rounded-[24px] border border-white shadow-sm hover:shadow-md transition-all">
               <User size={18} className="text-slate-400" />
               <select value={selectedMemberId} onChange={(e) => setSelectedMemberId(e.target.value)} className="bg-transparent border-none outline-none font-black text-slate-700 text-sm lg:text-base cursor-pointer appearance-none pr-6">
                 <option value="all">{isZh ? '全家视角' : 'Family'}</option>
                 {data.成员.map(m => <option key={m.成员ID} value={m.成员ID}>{m.成员昵称}</option>)}
               </select>
             </div>
-            {/* Currency Selector */}
-            <div className="flex items-center gap-4 bg-white/80 px-6 py-3 rounded-[24px] border border-white shadow-sm transition-all hover:shadow-md">
+            <div className="flex items-center gap-4 bg-white/80 px-6 py-3 rounded-[24px] border border-white shadow-sm hover:shadow-md transition-all">
               <Globe size={18} className="text-blue-500" />
               <select value={displayCurrency} onChange={(e) => setDisplayCurrency(e.target.value)} className="bg-transparent border-none outline-none font-black text-slate-700 text-sm lg:text-base cursor-pointer appearance-none pr-2">
                 {availableCurrencies.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
-            {/* Trend Type Selector */}
             <div className="flex bg-slate-900/10 p-1.5 rounded-[24px] border border-white/40">
               {(['total', 'liquid', 'fixed'] as const).map(t => (
                 <button key={t} onClick={() => setTrendType(t)} className={`px-5 py-2 rounded-[20px] text-[10px] lg:text-xs font-black uppercase tracking-widest transition-all ${trendType === t ? 'bg-white shadow-lg text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>
@@ -252,7 +272,6 @@ const DashboardView: React.FC = () => {
           </div>
         </div>
 
-        {/* Trend Section: Full Width Chart */}
         <div className="p-10 lg:p-14 bg-white/10 h-[450px]">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={calculations.trendData}>
@@ -283,7 +302,6 @@ const DashboardView: React.FC = () => {
           </ResponsiveContainer>
         </div>
 
-        {/* Table Section: Expanded Content */}
         <div className="p-10 lg:p-14 bg-white/30">
           <div className="flex items-center justify-between mb-12">
             <h4 className="text-2xl lg:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-5">
@@ -303,59 +321,82 @@ const DashboardView: React.FC = () => {
                 <tr className="text-[11px] lg:text-[13px] uppercase tracking-[0.4em] text-slate-400 font-black">
                   <th className="px-10 pb-4">{isZh ? '资产节点' : 'INFRA NODE'}</th>
                   <th className="px-10 pb-4">{isZh ? '所有者' : 'SOVEREIGN'}</th>
-                  <th className="px-10 pb-4">{isZh ? '机构/类型' : 'INSTITUTION'}</th>
+                  <th className="px-10 pb-4">{isZh ? '机构 / 类型' : 'INSTITUTION'}</th>
                   <th className="px-10 pb-4">{isZh ? '风险剖面' : 'RISK PROFILE'}</th>
                   <th className="px-10 pb-4 text-right">{isZh ? '原始账面' : 'BOOK VALUE'}</th>
                   <th className="px-10 pb-4 text-right">{isZh ? '折算估值' : 'MARKET VAL'}</th>
                 </tr>
               </thead>
               <tbody>
-                {calculations.snapshots.map((acc: any, idx) => (
-                  <tr key={idx} className="bg-white/40 hover:bg-white/80 transition-all duration-500 rounded-[32px] group shadow-sm hover:shadow-xl hover:-translate-y-1">
-                    <td className="px-10 py-7 rounded-l-[32px]">
-                      <div className="flex items-center gap-6">
-                        <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-[22px] shadow-lg flex items-center justify-center text-white font-black text-sm lg:text-xl transition-transform group-hover:rotate-6" style={{ backgroundColor: acc.代表色HEX || '#6366f1' }}>
-                          {String(acc.账户昵称 || acc.资产昵称)[0].toUpperCase()}
+                {calculations.snapshots.map((acc: any, idx) => {
+                  const brandColor = acc.代表色HEX || '#64748b';
+                  return (
+                    <tr key={idx} className="bg-white/40 hover:bg-white/80 transition-all duration-500 rounded-[32px] group shadow-sm hover:shadow-xl hover:-translate-y-1">
+                      <td className="px-10 py-7 rounded-l-[32px]">
+                        <div className="flex items-center gap-6">
+                          <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-[22px] shadow-lg flex items-center justify-center text-white font-black text-sm lg:text-xl transition-transform group-hover:rotate-6" style={{ backgroundColor: brandColor }}>
+                            {String(acc.账户昵称 || acc.资产昵称)[0]}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="font-black text-slate-900 text-lg lg:text-2xl tracking-tight leading-none mb-1">{acc.账户昵称 || acc.资产昵称}</span>
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">ID: {acc.账户ID || acc.资产ID}</span>
+                          </div>
                         </div>
-                        <div className="flex flex-col">
-                          <span className="font-black text-slate-900 text-lg lg:text-2xl tracking-tight leading-none mb-1">{acc.账户昵称 || acc.资产昵称}</span>
-                          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">ID: {acc.账户ID || acc.资产ID}</span>
+                      </td>
+                      <td className="px-10 py-7">
+                        <span className="px-4 py-1.5 bg-slate-900 text-white rounded-full text-[10px] lg:text-[12px] font-black uppercase tracking-[0.2em]">{acc.成员昵称}</span>
+                      </td>
+                      <td className="px-10 py-7">
+                        <div className="flex flex-col gap-2.5">
+                          <div 
+                            className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full border shadow-sm transition-all group-hover:shadow-md max-w-fit"
+                            style={{ 
+                              backgroundColor: `${brandColor}12`, 
+                              borderColor: `${brandColor}35` 
+                            }}
+                          >
+                            <div 
+                              className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black text-white shadow-inner"
+                              style={{ backgroundColor: brandColor }}
+                            >
+                              {String(acc.机构名称 || acc.资产昵称 || 'D')[0]}
+                            </div>
+                            <span 
+                              className="text-[12px] font-black tracking-tight"
+                              style={{ color: brandColor }}
+                            >
+                              {acc.机构名称 || (isZh ? '直接持有' : 'Direct')}
+                            </span>
+                          </div>
+                          <span className="text-[9px] lg:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">
+                            {acc.资产类型 || acc.固定资产类型 || 'Asset'}
+                          </span>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-10 py-7">
-                      <span className="px-4 py-1.5 bg-slate-900 text-white rounded-full text-[10px] lg:text-[12px] font-black uppercase tracking-[0.2em]">{acc.成员昵称}</span>
-                    </td>
-                    <td className="px-10 py-7">
-                      <div className="flex flex-col">
-                        <span className="text-xs lg:text-base font-black text-slate-700 tracking-tight">{acc.机构名称 || 'Direct'}</span>
-                        <span className="text-[9px] lg:text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1 opacity-70">{acc.资产类型 || acc.固定资产类型 || 'Asset'}</span>
-                      </div>
-                    </td>
-                    <td className="px-10 py-7">
-                      <span className="px-3 py-1 rounded-xl text-[10px] lg:text-[12px] font-black uppercase tracking-widest border-2 shadow-sm" style={{ color: RISK_COLORS[acc.risk], borderColor: RISK_COLORS[acc.risk] + '30', backgroundColor: RISK_COLORS[acc.risk] + '05' }}>{acc.risk}</span>
-                    </td>
-                    <td className="px-10 py-7 text-right">
-                      <div className="flex flex-col items-end">
-                        <span className="font-black text-slate-600 text-sm lg:text-lg tracking-tight">{Math.round(acc.latestVal).toLocaleString()}</span>
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">{acc.latestCur}</span>
-                      </div>
-                    </td>
-                    <td className="px-10 py-7 text-right rounded-r-[32px]">
-                      <div className="flex flex-col items-end">
-                        <span className={`text-2xl lg:text-4xl font-black tracking-tighter leading-none ${acc.converted < 0 ? 'text-rose-600' : 'text-indigo-600'}`}>{Math.round(acc.converted).toLocaleString()}</span>
-                        <span className="text-[10px] lg:text-[14px] font-black text-slate-400 uppercase tracking-widest mt-2">{displayCurrency}</span>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-10 py-7">
+                        <span className="px-3 py-1 rounded-xl text-[10px] lg:text-[12px] font-black uppercase tracking-widest border-2 shadow-sm" style={{ color: RISK_COLORS[acc.risk], borderColor: RISK_COLORS[acc.risk] + '30', backgroundColor: RISK_COLORS[acc.risk] + '05' }}>{acc.risk}</span>
+                      </td>
+                      <td className="px-10 py-7 text-right">
+                        <div className="flex flex-col items-end">
+                          <span className="font-black text-slate-600 text-sm lg:text-lg tracking-tight">{Math.round(acc.latestVal).toLocaleString()}</span>
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">{acc.latestCur}</span>
+                        </div>
+                      </td>
+                      <td className="px-10 py-7 text-right rounded-r-[32px]">
+                        <div className="flex flex-col items-end">
+                          <span className={`text-2xl lg:text-4xl font-black tracking-tighter leading-none ${acc.converted < 0 ? 'text-rose-600' : 'text-indigo-600'}`}>{Math.round(acc.converted).toLocaleString()}</span>
+                          <span className="text-[10px] lg:text-[14px] font-black text-slate-400 uppercase tracking-widest mt-2">{displayCurrency}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </div>
       </div>
 
-      {/* Row 3: Risk Distribution - Bottom Full Width */}
       <div className="glass-card rounded-[48px] p-10 lg:p-14 border-white/60 shadow-2xl bg-white/30 backdrop-blur-xl transition-all hover:shadow-4xl">
         <div className="flex items-center gap-6 mb-14">
           <div className="p-4 bg-indigo-600/10 text-indigo-600 rounded-[24px]"><BarChart3 size={32} /></div>
