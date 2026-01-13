@@ -107,9 +107,13 @@ const DashboardView: React.FC = () => {
         converted: convert(val, cur), 
         risk: normalizeRisk(acc.风险评估, isZh), 
         type: 'liquid',
-        代表色HEX: inst?.代表色HEX || '#6366f1'
+        代表色HEX: inst?.代表色HEX || '#4f46e5'
       };
     });
+
+    const fixedAssetColors: Record<string, string> = {
+      '房地产': '#6366f1', '车辆': '#06b6d4', '股权': '#8b5cf6', '珠宝': '#f43f5e', '其他': '#64748b'
+    };
 
     const allLatestFixed = data.固定资产.map(asset => {
       const records = data.固定资产记录.filter(r => r.资产ID === asset.资产ID).sort((a, b) => new Date(b.时间).getTime() - new Date(a.时间).getTime());
@@ -124,7 +128,7 @@ const DashboardView: React.FC = () => {
         converted: convert(val, cur), 
         risk: isZh ? '低' : 'Low', 
         type: 'fixed',
-        代表色HEX: '#64748b'
+        代表色HEX: fixedAssetColors[asset.固定资产类型] || '#64748b'
       };
     });
 
@@ -217,7 +221,7 @@ const DashboardView: React.FC = () => {
   return (
     <div className="space-y-8 animate-in fade-in duration-700 w-full px-2 sm:px-6 lg:px-10 max-w-full overflow-x-hidden">
       
-      {/* Row 1: 4 Full-Width Metric Cards */}
+      {/* Row 1: 4 Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 lg:gap-10">
         <StatCard label={isZh ? "净资产" : "NET WORTH"} value={calculations.netWorth} icon={<TrendingUp />} colorClass="text-indigo-600" grad="from-indigo-500/30 to-blue-500/10" />
         <StatCard label={isZh ? "流动资产" : "LIQUID"} value={calculations.liquidTotal} icon={<Wallet />} colorClass="text-emerald-600" grad="from-emerald-500/30 to-teal-500/10" />
@@ -225,7 +229,7 @@ const DashboardView: React.FC = () => {
         <StatCard label={isZh ? "债务净额" : "NET LOANS"} value={calculations.loanNet} icon={<Landmark />} colorClass="text-purple-600" grad="from-pink-500/30 to-purple-500/10" />
       </div>
 
-      {/* Row 2: Core Asset Perspective (Trends + Table) */}
+      {/* Row 2: Asset Perspective */}
       <div className="glass-card rounded-[48px] border-white/60 shadow-2xl overflow-hidden flex flex-col bg-white/20 backdrop-blur-xl">
         <div className="p-10 lg:p-14 border-b border-white/20 bg-white/40 flex flex-col lg:flex-row items-center justify-between gap-8">
           <div className="flex flex-col sm:flex-row items-center gap-6 xl:gap-10">
@@ -332,12 +336,16 @@ const DashboardView: React.FC = () => {
               </thead>
               <tbody>
                 {calculations.snapshots.map((acc: any, idx) => {
-                  const brandColor = acc.代表色HEX || '#64748b';
+                  const brandColor = acc.代表色HEX || '#4f46e5';
                   return (
                     <tr key={idx} className="bg-white/40 hover:bg-white/80 transition-all duration-500 rounded-[32px] group shadow-sm hover:shadow-xl hover:-translate-y-1">
                       <td className="px-10 py-7 rounded-l-[32px]">
                         <div className="flex items-center gap-6">
-                          <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-[22px] shadow-lg flex items-center justify-center text-white font-black text-sm lg:text-xl transition-transform group-hover:rotate-6" style={{ backgroundColor: brandColor }}>
+                          {/* Asset Node Icon - Fixed bg color issue by removing Tailwind background classes */}
+                          <div 
+                            className="w-12 h-12 lg:w-16 lg:h-16 rounded-[22px] shadow-lg flex items-center justify-center text-white font-black text-sm lg:text-xl transition-transform group-hover:rotate-6" 
+                            style={{ backgroundColor: brandColor }}
+                          >
                             {String(acc.账户昵称 || acc.资产昵称)[0]}
                           </div>
                           <div className="flex flex-col">
@@ -351,6 +359,7 @@ const DashboardView: React.FC = () => {
                       </td>
                       <td className="px-10 py-7">
                         <div className="flex flex-col gap-2.5">
+                          {/* Institution Pill */}
                           <div 
                             className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full border shadow-sm transition-all group-hover:shadow-md max-w-fit"
                             style={{ 
