@@ -32,7 +32,6 @@ const DashboardView: React.FC = () => {
   const [snapshotTypeFilter, setSnapshotTypeFilter] = useState<'all' | 'liquid' | 'fixed'>('liquid');
   const [trendType, setTrendType] = useState<'total' | 'liquid' | 'fixed'>('liquid');
 
-  // Scroll Sync Refs
   const topScrollRef = useRef<HTMLDivElement>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
@@ -98,16 +97,33 @@ const DashboardView: React.FC = () => {
       return rateFactor ? amount / rateFactor : 0;
     };
 
+    // ULTRA-ROBUST Color Resolver
     const resolveColor = (acc: any, type: 'liquid' | 'fixed') => {
+      const FALLBACK_COLOR = '#475569'; // Slate 600
+      
       if (type === 'liquid') {
+        // 1. Try exact ID match
         const instById = data.机构.find(i => i.机构ID === acc.机构ID);
         if (instById?.代表色HEX) return instById.代表色HEX;
-        const instByName = data.机构.find(i => i.机构名称 === acc.机构名称);
+
+        // 2. Try exact Name match (trim and case-insensitive)
+        const accInstName = String(acc.机构名称 || '').trim().toLowerCase();
+        const instByName = data.机构.find(i => String(i.机构名称 || '').trim().toLowerCase() === accInstName);
         if (instByName?.代表色HEX) return instByName.代表色HEX;
-        return generateColorFromString(acc.机构名称 || acc.账户昵称 || 'Default');
+
+        // 3. Special Hardcodes for high-frequency demo institutions if matches
+        if (accInstName.includes('中信')) return '#1e40af';
+        if (accInstName.includes('fidelity')) return '#004a97';
+        if (accInstName.includes('招商')) return '#ce0b24';
+        if (accInstName.includes('hsbc')) return '#db0011';
+        
+        // 4. Fallback to hash color
+        return generateColorFromString(acc.机构名称 || acc.账户昵称 || 'Default') || FALLBACK_COLOR;
       } else {
-        const fixedAssetColors: Record<string, string> = { '房地产': '#6366f1', '车辆': '#06b6d4', '股权': '#8b5cf6', '珠宝': '#f43f5e', '其他': '#64748b' };
-        return fixedAssetColors[acc.固定资产类型] || generateColorFromString(acc.资产昵称 || 'Fixed');
+        const fixedAssetColors: Record<string, string> = { 
+          '房地产': '#6366f1', '车辆': '#06b6d4', '股权': '#8b5cf6', '珠宝': '#f43f5e', '其他': '#64748b' 
+        };
+        return fixedAssetColors[acc.固定资产类型] || generateColorFromString(acc.资产昵称 || 'Fixed') || FALLBACK_COLOR;
       }
     };
 
@@ -116,7 +132,16 @@ const DashboardView: React.FC = () => {
       const latest = records[0];
       const val = latest ? Number(latest.市值) || 0 : 0;
       const cur = latest ? latest.币种 : acc.币种;
-      return { ...acc, latestVal: val, latestCur: cur, latestDate: latest ? latest.时间 : '—', converted: convert(val, cur), risk: isZh ? (acc.风险评估 || '未知') : (acc.风险评估 || 'Unknown'), type: 'liquid', resolvedColor: resolveColor(acc, 'liquid') };
+      return { 
+        ...acc, 
+        latestVal: val, 
+        latestCur: cur, 
+        latestDate: latest ? latest.时间 : '—', 
+        converted: convert(val, cur), 
+        risk: isZh ? (acc.风险评估 || '未知') : (acc.风险评估 || 'Unknown'), 
+        type: 'liquid', 
+        resolvedColor: resolveColor(acc, 'liquid') 
+      };
     });
 
     const allLatestFixed = data.固定资产.map(asset => {
@@ -195,7 +220,6 @@ const DashboardView: React.FC = () => {
     return { netWorth, liquidTotal, fixedTotal, loanNet, trendData, snapshots, barData, RISK_LEVELS };
   }, [data, displayCurrency, selectedMemberId, trendType, snapshotTypeFilter, isZh, exchangeRatesMap]);
 
-  // Sync scroll positions
   const onTopScroll = () => {
     if (tableContainerRef.current && topScrollRef.current) {
       tableContainerRef.current.scrollLeft = topScrollRef.current.scrollLeft;
@@ -232,7 +256,6 @@ const DashboardView: React.FC = () => {
   return (
     <div className="space-y-8 animate-in fade-in duration-700 w-full px-2 sm:px-6 lg:px-10 max-w-full overflow-x-hidden">
       
-      {/* Metrics Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 lg:gap-10">
         <StatCard label={isZh ? "净资产" : "NET WORTH"} value={calculations.netWorth} icon={<TrendingUp />} colorClass="text-indigo-600" grad="from-indigo-500/30 to-blue-500/10" />
         <StatCard label={isZh ? "流动资产" : "LIQUID"} value={calculations.liquidTotal} icon={<Wallet />} colorClass="text-emerald-600" grad="from-emerald-500/30 to-teal-500/10" />
@@ -422,7 +445,7 @@ const DashboardView: React.FC = () => {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={calculations.barData} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
               <CartesianGrid strokeDasharray="5 5" vertical={false} stroke="rgba(0,0,0,0.03)" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 13, fontWeights: 900, fill: '#64748b' }} dy={15} />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 13, fontWeight: 900, fill: '#64748b' }} dy={15} />
               <YAxis hide domain={[0, 100]} />
               <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} content={({ active, payload, label }) => {
                 if (active && payload && payload.length) {

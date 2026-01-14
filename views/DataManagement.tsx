@@ -14,11 +14,12 @@ import {
   Languages,
   Trash2,
   Tag,
-  Edit3
+  Edit3,
+  RefreshCw
 } from 'lucide-react';
 import { parseExcelFile, exportToExcel } from '../utils/excelHelper';
 import { AppData, TabName } from '../types';
-import { EXCEL_STRUCTURE } from '../constants';
+import { EXCEL_STRUCTURE, INITIAL_APP_DATA } from '../constants';
 
 const DataManagementView: React.FC = () => {
   const context = useContext(AppContext);
@@ -32,6 +33,19 @@ const DataManagementView: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isZh = settings.language === 'zh';
+
+  const handleFactoryReset = () => {
+    const msg = isZh 
+      ? "确认要强制恢复演示数据吗？\n这将抹除您当前浏览器中的所有自定义修改，解决由于旧数据导致的 ID 或 颜色匹配冲突。" 
+      : "Reset to factory demo data?\nThis will clear all local modifications and fix ID/Color mismatches from old data.";
+    
+    if (window.confirm(msg)) {
+      setData(INITIAL_APP_DATA);
+      localStorage.setItem('family_asset_data', JSON.stringify(INITIAL_APP_DATA));
+      alert(isZh ? "数据已重置为最新演示版。" : "Data reset to latest demo version.");
+      window.location.reload(); // Force reload to ensure all memoized calculations refresh
+    }
+  };
 
   // Helper to split tags and get unique values
   const getUniqueTags = (categories: { tab: TabName, field: string }[]) => {
@@ -63,6 +77,7 @@ const DataManagementView: React.FC = () => {
         { tab: '汇率' as TabName, field: '报价币种' },
         { tab: '账户' as TabName, field: '币种' },
         { tab: '流动资产记录' as TabName, field: '币种' },
+        { tab: '财务记录' as TabName, field: '币种' },
         { tab: '固定资产记录' as TabName, field: '币种' },
         { tab: '借入借出记录' as TabName, field: '币种' },
         { tab: '固定资产' as TabName, field: '币种' },
@@ -209,10 +224,8 @@ const DataManagementView: React.FC = () => {
       
       {!previewData && (
         <div className="space-y-8 lg:space-y-12">
-          {/* Top Action Row: Flat horizontal layout */}
+          {/* Top Action Row */}
           <div className="flex flex-col lg:flex-row gap-4 lg:gap-8">
-            
-            {/* Excel Selector (Relatively larger) */}
             <div className="lg:flex-[1.5] flex min-h-[140px] items-center glass-card rounded-[32px] p-8 bg-gradient-to-br from-blue-600 to-indigo-700 text-white border-none shadow-xl hover:scale-[1.02] transition-all cursor-pointer group relative overflow-hidden"
                  onClick={() => fileInputRef.current?.click()}>
               <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
@@ -229,23 +242,28 @@ const DataManagementView: React.FC = () => {
               <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
             </div>
 
-            {/* Other 3 Tools (Flattened and horizontal) */}
-            <div className="lg:flex-[2.5] grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-8">
+            <div className="lg:flex-[2.5] grid grid-cols-1 sm:grid-cols-4 gap-4 lg:gap-8">
               <ToolButton 
                 icon={<Eye size={24} />} 
-                title={isZh ? "审查数据" : "Review Data"} 
+                title={isZh ? "审查数据" : "Review"} 
                 onClick={() => { setIsReviewingCurrent(true); setActivePreviewTab('成员'); }} 
                 color="text-emerald-500" 
               />
               <ToolButton 
+                icon={<RefreshCw size={24} />} 
+                title={isZh ? "同步演示" : "Reset Demo"} 
+                onClick={handleFactoryReset} 
+                color="text-amber-600" 
+              />
+              <ToolButton 
                 icon={<Download size={24} />} 
-                title={isZh ? "导出备份" : "Export XLSX"} 
+                title={isZh ? "导出" : "Export"} 
                 onClick={() => exportToExcel(currentData)} 
                 color="text-blue-500" 
               />
               <ToolButton 
                 icon={<Trash2 size={24} />} 
-                title={isZh ? "清空库" : "Reset DB"} 
+                title={isZh ? "清空" : "Clear"} 
                 onClick={handleClearData} 
                 color="text-rose-600" 
                 isDanger 
@@ -253,7 +271,6 @@ const DataManagementView: React.FC = () => {
             </div>
           </div>
 
-          {/* Optimized System Settings with Better Space Allocation */}
           <div className="glass-card rounded-[48px] p-10 lg:p-14 bg-white/40 backdrop-blur-3xl border border-white/60 shadow-lg relative overflow-hidden">
             <div className="absolute -top-12 -right-12 w-96 h-96 bg-indigo-500/10 blur-[150px] rounded-full"></div>
             
@@ -265,10 +282,7 @@ const DataManagementView: React.FC = () => {
               </div>
             </div>
 
-            {/* Adjusted grid for better tag management width */}
             <div className="grid grid-cols-1 xl:grid-cols-[340px_1fr] gap-12 lg:gap-16 relative z-10">
-              
-              {/* Left Side: Basic Preference */}
               <div className="space-y-8">
                 <div className="space-y-4">
                   <label className="flex items-center gap-3 text-[12px] lg:text-[14px] font-black text-slate-500 uppercase tracking-[0.2em]"><Languages size={20} className="text-indigo-500" /> {isZh ? '语言选择' : 'Language'}</label>
@@ -289,7 +303,6 @@ const DataManagementView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Right Side: Enhanced Tag Management */}
               <div className="space-y-6">
                 <label className="flex items-center gap-3 text-[12px] lg:text-[14px] font-black text-slate-500 uppercase tracking-[0.2em]"><Tag size={20} className="text-blue-500" /> {isZh ? '全域标签管理' : 'Global Tag Explorer'}</label>
                 <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6 overflow-y-auto max-h-[500px] pr-4 custom-scrollbar-wide">
@@ -300,6 +313,7 @@ const DataManagementView: React.FC = () => {
                         {tagData[key].length > 0 ? tagData[key].map((t, i) => (
                           <button 
                             key={i} 
+                            // Fix: Use 'key' which is correctly scoped within the map iteration.
                             onClick={() => handleRenameTag(key, t)}
                             className={`group flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[12px] lg:text-[13px] font-black uppercase tracking-tight shadow-sm border border-black/5 hover:scale-105 active:scale-95 transition-all ${config.color}`}
                           >
@@ -317,7 +331,6 @@ const DataManagementView: React.FC = () => {
         </div>
       )}
 
-      {/* Preview View */}
       {previewData && (
         <div className="space-y-8 animate-in slide-in-from-bottom-16 duration-1000">
           <div className={`glass-card rounded-[40px] p-8 lg:p-12 flex flex-col md:flex-row items-center justify-between border-none shadow-3xl relative overflow-hidden transition-all duration-700 ${isIncoming ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white' : 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white'}`}>
