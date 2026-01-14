@@ -113,6 +113,10 @@ const DashboardView: React.FC = () => {
     'Unknown': '#94a3b8', '未知': '#94a3b8'
   };
 
+  const RISK_LEVELS_ORDER = isZh 
+    ? ['未知', '低', '中', '高', '极高'] 
+    : ['Unknown', 'Low', 'Medium', 'High', 'Very High'];
+
   const calculations = useMemo(() => {
     const convert = (amount: number, currency: string) => {
       if (!amount) return 0;
@@ -186,26 +190,38 @@ const DashboardView: React.FC = () => {
     for (let i = 11; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthStr = d.toISOString().slice(0, 7);
-      const calcTotalAt = (type: string) => {
-        let sum = 0;
-        if (type === 'total' || type === 'liquid') {
-          data.账户.forEach(acc => {
-            if (selectedMemberId !== 'all' && acc.成员ID !== selectedMemberId) return;
-            const records = data.流动资产记录.filter(r => r.账户ID === acc.账户ID && r.时间 <= monthStr + '-31').sort((a, b) => new Date(b.时间).getTime() - new Date(a.时间).getTime());
-            if (records[0]) sum += convert(Number(records[0].市值) || 0, records[0].币种);
-          });
-        }
-        if (type === 'total' || type === 'fixed') {
-          data.固定资产.forEach(asset => {
-            if (selectedMemberId !== 'all' && asset.成员ID !== selectedMemberId) return;
-            const records = data.固定资产记录.filter(r => r.资产ID === asset.资产ID && r.时间 <= monthStr + '-31').sort((a, b) => new Date(b.时间).getTime() - new Date(a.时间).getTime());
-            if (records[0]) sum += convert(Number(records[0].估值) || 0, records[0].币种);
-            else sum += convert(Number(asset.购入价格) || 0, asset.币种);
-          });
-        }
-        return Math.round(sum);
-      };
-      trendData.push({ name: monthStr, value: calcTotalAt(trendType) });
+      
+      const point: any = { name: monthStr };
+      RISK_LEVELS_ORDER.forEach(l => point[l] = 0);
+
+      if (trendType === 'total' || trendType === 'liquid') {
+        data.账户.forEach(acc => {
+          if (selectedMemberId !== 'all' && acc.成员ID !== selectedMemberId) return;
+          const records = data.流动资产记录.filter(r => r.账户ID === acc.账户ID && r.时间 <= monthStr + '-31').sort((a, b) => new Date(b.时间).getTime() - new Date(a.时间).getTime());
+          if (records[0]) {
+            const val = convert(Number(records[0].市值) || 0, records[0].币种);
+            const risk = isZh ? (acc.风险评估 || '未知') : (acc.风险评估 || 'Unknown');
+            point[risk] = (point[risk] || 0) + val;
+          }
+        });
+      }
+      if (trendType === 'total' || trendType === 'fixed') {
+        data.固定资产.forEach(asset => {
+          if (selectedMemberId !== 'all' && asset.成员ID !== selectedMemberId) return;
+          const records = data.固定资产记录.filter(r => r.资产ID === asset.资产ID && r.时间 <= monthStr + '-31').sort((a, b) => new Date(b.时间).getTime() - new Date(a.时间).getTime());
+          const risk = isZh ? '低' : 'Low';
+          if (records[0]) {
+            const val = convert(Number(records[0].估值) || 0, records[0].币种);
+            point[risk] = (point[risk] || 0) + val;
+          } else if (asset.购入时间 && asset.购入时间 <= monthStr + '-31') {
+            const val = convert(Number(asset.购入价格) || 0, asset.币种);
+            point[risk] = (point[risk] || 0) + val;
+          }
+        });
+      }
+      
+      point.totalValue = RISK_LEVELS_ORDER.reduce((sum, l) => sum + point[l], 0);
+      trendData.push(point);
     }
 
     const RISK_LEVELS = isZh ? ['极高', '高', '中', '低', '未知'] : ['Very High', 'High', 'Medium', 'Low', 'Unknown'];
@@ -233,7 +249,7 @@ const DashboardView: React.FC = () => {
     snapshots = snapshots.sort((a, b) => b.converted - a.converted);
 
     return { netWorth, liquidTotal, fixedTotal, loanNet, trendData, snapshots, barData, RISK_LEVELS };
-  }, [data, displayCurrency, selectedMemberId, trendType, snapshotTypeFilter, isZh, exchangeRatesMap]);
+  }, [data, displayCurrency, selectedMemberId, trendType, snapshotTypeFilter, isZh, exchangeRatesMap, RISK_LEVELS_ORDER]);
 
   const onTopScroll = () => {
     if (tableContainerRef.current && topScrollRef.current) {
@@ -325,30 +341,65 @@ const DashboardView: React.FC = () => {
 
         <div className="p-10 lg:p-14 bg-white/10 h-[450px]">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={calculations.trendData}>
+            <AreaChart data={calculations.trendData} margin={{ left: 20, right: 20, top: 10, bottom: 0 }}>
               <defs>
-                <linearGradient id="colorTrend" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.25}/>
-                  <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
-                </linearGradient>
+                {RISK_LEVELS_ORDER.map(level => (
+                  <linearGradient key={`grad-${level}`} id={`grad-${level}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={RISK_COLORS[level]} stopOpacity={0.6}/>
+                    <stop offset="95%" stopColor={RISK_COLORS[level]} stopOpacity={0.05}/>
+                  </linearGradient>
+                ))}
               </defs>
               <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="rgba(0,0,0,0.04)" />
               <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 900, fill: '#94a3b8' }} dy={15} />
-              <YAxis hide domain={['auto', 'auto']} />
+              <YAxis 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fontSize: 10, fontWeight: 900, fill: '#94a3b8' }} 
+                width={60}
+                tickFormatter={(value) => {
+                  if (value === 0) return '0';
+                  if (Math.abs(value) >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                  if (Math.abs(value) >= 1000) return `${(value / 1000).toFixed(0)}k`;
+                  return value.toString();
+                }}
+              />
               <Tooltip 
                 content={({ active, payload, label }) => {
                   if (active && payload && payload.length) {
+                    const total = payload[0].payload.totalValue;
                     return (
                       <div className="bg-white/95 backdrop-blur-2xl p-6 rounded-[28px] shadow-4xl border border-white/20 min-w-[240px]">
-                        <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] mb-2">{label}</p>
-                        <p className="text-3xl font-black text-indigo-600 tracking-tighter">{payload[0].value.toLocaleString()} <span className="text-xs uppercase ml-1">{displayCurrency}</span></p>
+                        <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] mb-3">{label}</p>
+                        <p className="text-3xl font-black text-slate-900 tracking-tighter mb-4">{Math.round(total).toLocaleString()} <span className="text-xs uppercase ml-1">{displayCurrency}</span></p>
+                        <div className="space-y-2 border-t border-slate-100 pt-3">
+                          {payload.slice().reverse().map((entry: any, idx) => (
+                            <div key={idx} className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest">
+                              <span className="flex items-center gap-2" style={{ color: entry.color }}><div className="w-2 h-2 rounded-full" style={{backgroundColor: entry.color}}></div> {entry.name}</span>
+                              <span className="text-slate-600">{Math.round(entry.value).toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     );
                   }
                   return null;
                 }}
               />
-              <Area type="monotone" dataKey="value" stroke="#4f46e5" strokeWidth={5} fillOpacity={1} fill="url(#colorTrend)" animationDuration={2000} strokeLinecap="round" />
+              {RISK_LEVELS_ORDER.map(level => (
+                <Area 
+                  key={level}
+                  type="monotone" 
+                  dataKey={level} 
+                  stackId="1"
+                  stroke={RISK_COLORS[level]} 
+                  strokeWidth={3} 
+                  fillOpacity={1} 
+                  fill={`url(#grad-${level})`} 
+                  animationDuration={2000} 
+                  strokeLinecap="round" 
+                />
+              ))}
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -361,7 +412,7 @@ const DashboardView: React.FC = () => {
             <div className="flex bg-slate-900/5 p-1.5 rounded-[22px] border border-white/40">
               {(['all', 'liquid', 'fixed'] as const).map(m => (
                 <button key={m} onClick={() => setSnapshotTypeFilter(m)} className={`px-6 py-2 rounded-[18px] text-[11px] font-black uppercase tracking-[0.2em] transition-all ${snapshotTypeFilter === m ? 'bg-white shadow-xl text-slate-900' : 'text-slate-400 hover:text-slate-500'}`}>
-                  {m === 'all' ? (isZh ? '全部' : 'ALL') : m === 'liquid' ? (isZh ? '流动' : 'LIQ') : (isZh ? '固定' : 'FIX')}
+                  {m === 'all' ? (isZh ? '全部' : 'ALL') : m === 'liquid' ? (isZh ? '流动' : 'LIQUID') : (isZh ? '固定' : 'FIX')}
                 </button>
               ))}
             </div>
