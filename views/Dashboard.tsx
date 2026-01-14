@@ -7,17 +7,43 @@ import {
 } from 'recharts';
 import { 
   TrendingUp, Wallet, Home, Landmark, Globe, User, Filter, 
-  BarChart3, ChevronDown, Calendar, ArrowUpRight, Clock 
+  BarChart3, Calendar, ArrowUpRight, Clock 
 } from 'lucide-react';
 
-// Deterministic color generator based on string hash
-const generateColorFromString = (str: string) => {
+// Deterministic color generator based on Type String
+const generateColorFromType = (typeStr: string) => {
+  if (!typeStr) return '#475569';
   let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < typeStr.length; i++) {
+    hash = typeStr.charCodeAt(i) + ((hash << 5) - hash);
   }
   const h = Math.abs(hash % 360);
-  return `hsl(${h}, 65%, 45%)`;
+  return `hsl(${h}, 60%, 45%)`;
+};
+
+// Global mapping for consistent visual identity
+const TYPE_COLOR_MAP: Record<string, string> = {
+  // Institution Types (Liquid)
+  '银行': '#dc2626', // Red
+  'Bank': '#dc2626',
+  '券商': '#2563eb', // Blue
+  'Securities': '#2563eb',
+  '加密货币': '#d97706', // Amber
+  'Crypto': '#d97706',
+  '保险': '#db2777', // Pink
+  'Insurance': '#db2777',
+  '支付': '#0891b2', // Cyan
+  'Payment': '#0891b2',
+  
+  // Fixed Asset Types
+  '房地产': '#7c3aed', // Violet
+  'Real Estate': '#7c3aed',
+  '车辆': '#0d9488', // Teal
+  'Vehicle': '#0d9488',
+  '股权': '#4f46e5', // Indigo
+  'Equity': '#4f46e5',
+  '珠宝': '#be123c', // Rose
+  'Jewelry': '#be123c'
 };
 
 const DashboardView: React.FC = () => {
@@ -26,7 +52,6 @@ const DashboardView: React.FC = () => {
   const { data, settings } = context;
 
   const isZh = settings.language === 'zh';
-
   const [displayCurrency, setDisplayCurrency] = useState<string>('CNY');
   const [selectedMemberId, setSelectedMemberId] = useState<string>('all');
   const [snapshotTypeFilter, setSnapshotTypeFilter] = useState<'all' | 'liquid' | 'fixed'>('liquid');
@@ -43,7 +68,6 @@ const DashboardView: React.FC = () => {
     });
     data.账户.forEach(acc => { if (acc.币种) currencies.add(acc.币种); });
     data.固定资产.forEach(asset => { if (asset.币种) currencies.add(asset.币种); });
-    data.流动资产记录.forEach(r => { if (r.币种) currencies.add(r.币种); });
     if (settings.baseCurrency) currencies.add(settings.baseCurrency);
     if (currencies.size === 0) currencies.add('CNY');
     return Array.from(currencies).filter(Boolean).sort();
@@ -97,33 +121,15 @@ const DashboardView: React.FC = () => {
       return rateFactor ? amount / rateFactor : 0;
     };
 
-    // ULTRA-ROBUST Color Resolver
+    // TYPE-BASED COLOR LOGIC
     const resolveColor = (acc: any, type: 'liquid' | 'fixed') => {
-      const FALLBACK_COLOR = '#475569'; // Slate 600
-      
       if (type === 'liquid') {
-        // 1. Try exact ID match
-        const instById = data.机构.find(i => i.机构ID === acc.机构ID);
-        if (instById?.代表色HEX) return instById.代表色HEX;
-
-        // 2. Try exact Name match (trim and case-insensitive)
-        const accInstName = String(acc.机构名称 || '').trim().toLowerCase();
-        const instByName = data.机构.find(i => String(i.机构名称 || '').trim().toLowerCase() === accInstName);
-        if (instByName?.代表色HEX) return instByName.代表色HEX;
-
-        // 3. Special Hardcodes for high-frequency demo institutions if matches
-        if (accInstName.includes('中信')) return '#1e40af';
-        if (accInstName.includes('fidelity')) return '#004a97';
-        if (accInstName.includes('招商')) return '#ce0b24';
-        if (accInstName.includes('hsbc')) return '#db0011';
-        
-        // 4. Fallback to hash color
-        return generateColorFromString(acc.机构名称 || acc.账户昵称 || 'Default') || FALLBACK_COLOR;
+        const inst = data.机构.find(i => i.机构ID === acc.机构ID || i.机构名称 === acc.机构名称);
+        const typeStr = inst?.机构类型 || '其他';
+        return TYPE_COLOR_MAP[typeStr] || generateColorFromType(typeStr);
       } else {
-        const fixedAssetColors: Record<string, string> = { 
-          '房地产': '#6366f1', '车辆': '#06b6d4', '股权': '#8b5cf6', '珠宝': '#f43f5e', '其他': '#64748b' 
-        };
-        return fixedAssetColors[acc.固定资产类型] || generateColorFromString(acc.资产昵称 || 'Fixed') || FALLBACK_COLOR;
+        const typeStr = acc.固定资产类型 || '其他';
+        return TYPE_COLOR_MAP[typeStr] || generateColorFromType(typeStr);
       }
     };
 
@@ -149,7 +155,16 @@ const DashboardView: React.FC = () => {
       const latest = records[0];
       const val = latest ? Number(latest.估值) || 0 : Number(asset.购入价格) || 0;
       const cur = latest ? latest.币种 : asset.币种;
-      return { ...asset, latestVal: val, latestCur: cur, latestDate: latest ? latest.时间 : (asset.购入时间 || '—'), converted: convert(val, cur), risk: isZh ? '低' : 'Low', type: 'fixed', resolvedColor: resolveColor(asset, 'fixed') };
+      return { 
+        ...asset, 
+        latestVal: val, 
+        latestCur: cur, 
+        latestDate: latest ? latest.时间 : (asset.购入时间 || '—'), 
+        converted: convert(val, cur), 
+        risk: isZh ? '低' : 'Low', 
+        type: 'fixed', 
+        resolvedColor: resolveColor(asset, 'fixed') 
+      };
     });
 
     const filteredLiquid = selectedMemberId === 'all' ? allLatestLiquid : allLatestLiquid.filter(a => a.成员ID === selectedMemberId);
@@ -255,7 +270,6 @@ const DashboardView: React.FC = () => {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 w-full px-2 sm:px-6 lg:px-10 max-w-full overflow-x-hidden">
-      
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 lg:gap-10">
         <StatCard label={isZh ? "净资产" : "NET WORTH"} value={calculations.netWorth} icon={<TrendingUp />} colorClass="text-indigo-600" grad="from-indigo-500/30 to-blue-500/10" />
         <StatCard label={isZh ? "流动资产" : "LIQUID"} value={calculations.liquidTotal} icon={<Wallet />} colorClass="text-emerald-600" grad="from-emerald-500/30 to-teal-500/10" />
@@ -353,19 +367,11 @@ const DashboardView: React.FC = () => {
             </div>
           </div>
 
-          <div 
-            ref={topScrollRef}
-            onScroll={onTopScroll}
-            className="overflow-x-auto custom-scrollbar-wide bg-slate-50/20 border-b border-white/10"
-          >
+          <div ref={topScrollRef} onScroll={onTopScroll} className="overflow-x-auto custom-scrollbar-wide bg-slate-50/20 border-b border-white/10">
             <div style={{ width: tableContainerRef.current?.scrollWidth || '100%', height: '1px' }}></div>
           </div>
 
-          <div 
-            ref={tableContainerRef}
-            onScroll={onTableScroll}
-            className="overflow-x-auto custom-scrollbar-wide"
-          >
+          <div ref={tableContainerRef} onScroll={onTableScroll} className="overflow-x-auto custom-scrollbar-wide">
             <table className="w-full text-left border-separate border-spacing-y-5">
               <thead>
                 <tr className="text-[11px] lg:text-[13px] uppercase tracking-[0.4em] text-slate-400 font-black">
