@@ -98,7 +98,18 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const saved = localStorage.getItem('family_asset_data');
-    if (saved) try { setData(JSON.parse(saved)); } catch (e) { console.error(e); }
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Defensive merge: Ensure all expected keys from INITIAL_APP_DATA exist
+        setData(prev => ({
+          ...prev,
+          ...parsed
+        }));
+      } catch (e) {
+        console.error("Data loading error:", e);
+      }
+    }
   }, []);
 
   useEffect(() => { localStorage.setItem('family_asset_data', JSON.stringify(data)); }, [data]);

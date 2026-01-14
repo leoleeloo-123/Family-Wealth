@@ -43,26 +43,27 @@ const DataManagementView: React.FC = () => {
       setData(INITIAL_APP_DATA);
       localStorage.setItem('family_asset_data', JSON.stringify(INITIAL_APP_DATA));
       alert(isZh ? "数据已重置为最新演示版。" : "Data reset to latest demo version.");
-      window.location.reload(); // Force reload to ensure all memoized calculations refresh
+      window.location.reload();
     }
   };
 
-  // Helper to split tags and get unique values
   const getUniqueTags = (categories: { tab: TabName, field: string }[]) => {
     const allTags = new Set<string>();
     categories.forEach(({ tab, field }) => {
       const records = currentData[tab] as any[];
-      records.forEach(row => {
-        const val = String(row[field] || '');
-        if (val.includes('|||')) {
-          val.split('|||').forEach(t => {
-            const trimmed = t.trim();
-            if (trimmed) allTags.add(trimmed);
-          });
-        } else if (val.trim()) {
-          allTags.add(val.trim());
-        }
-      });
+      if (Array.isArray(records)) {
+        records.forEach(row => {
+          const val = String(row[field] || '');
+          if (val.includes('|||')) {
+            val.split('|||').forEach(t => {
+              const trimmed = t.trim();
+              if (trimmed) allTags.add(trimmed);
+            });
+          } else if (val.trim()) {
+            allTags.add(val.trim());
+          }
+        });
+      }
     });
     return Array.from(allTags).sort();
   };
@@ -77,7 +78,6 @@ const DataManagementView: React.FC = () => {
         { tab: '汇率' as TabName, field: '报价币种' },
         { tab: '账户' as TabName, field: '币种' },
         { tab: '流动资产记录' as TabName, field: '币种' },
-        { tab: '财务记录' as TabName, field: '币种' },
         { tab: '固定资产记录' as TabName, field: '币种' },
         { tab: '借入借出记录' as TabName, field: '币种' },
         { tab: '固定资产' as TabName, field: '币种' },
@@ -144,26 +144,30 @@ const DataManagementView: React.FC = () => {
     const newName = window.prompt(isZh ? `重命名标签 "${oldName}" 为:` : `Rename tag "${oldName}" to:`, oldName);
     if (newName === null || newName.trim() === '' || newName === oldName) return;
 
-    const targets = (tagCategories as Record<string, any>)[categoryKey].targets;
+    const config = (tagCategories as Record<string, any>)[categoryKey];
+    if (!config) return;
+
     const newData = { ...currentData };
 
-    targets.forEach(({ tab, field }: { tab: TabName, field: string }) => {
-      const records = [...(newData[tab] as any[])];
-      const updatedRecords = records.map(row => {
-        const val = String(row[field] || '');
-        if (val.includes('|||')) {
-          const parts = val.split('|||').map(p => p.trim());
-          const index = parts.indexOf(oldName);
-          if (index !== -1) {
-            parts[index] = newName.trim();
-            return { ...row, [field]: parts.join('|||') };
+    config.targets.forEach(({ tab, field }: { tab: TabName, field: string }) => {
+      const records = newData[tab];
+      if (Array.isArray(records)) {
+        const updatedRecords = records.map(row => {
+          const val = String(row[field] || '');
+          if (val.includes('|||')) {
+            const parts = val.split('|||').map(p => p.trim());
+            const index = parts.indexOf(oldName);
+            if (index !== -1) {
+              parts[index] = newName.trim();
+              return { ...row, [field]: parts.join('|||') };
+            }
+          } else if (val.trim() === oldName) {
+            return { ...row, [field]: newName.trim() };
           }
-        } else if (val.trim() === oldName) {
-          return { ...row, [field]: newName.trim() };
-        }
-        return row;
-      });
-      (newData[tab] as any) = updatedRecords;
+          return row;
+        });
+        (newData[tab] as any) = updatedRecords;
+      }
     });
 
     setData(newData);
@@ -221,10 +225,8 @@ const DataManagementView: React.FC = () => {
 
   return (
     <div className="w-full max-w-[1900px] mx-auto space-y-8 lg:space-y-12 pb-12 animate-in fade-in duration-700">
-      
       {!previewData && (
         <div className="space-y-8 lg:space-y-12">
-          {/* Top Action Row */}
           <div className="flex flex-col lg:flex-row gap-4 lg:gap-8">
             <div className="lg:flex-[1.5] flex min-h-[140px] items-center glass-card rounded-[32px] p-8 bg-gradient-to-br from-blue-600 to-indigo-700 text-white border-none shadow-xl hover:scale-[1.02] transition-all cursor-pointer group relative overflow-hidden"
                  onClick={() => fileInputRef.current?.click()}>
@@ -241,39 +243,15 @@ const DataManagementView: React.FC = () => {
               </div>
               <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
             </div>
-
             <div className="lg:flex-[2.5] grid grid-cols-1 sm:grid-cols-4 gap-4 lg:gap-8">
-              <ToolButton 
-                icon={<Eye size={24} />} 
-                title={isZh ? "审查数据" : "Review"} 
-                onClick={() => { setIsReviewingCurrent(true); setActivePreviewTab('成员'); }} 
-                color="text-emerald-500" 
-              />
-              <ToolButton 
-                icon={<RefreshCw size={24} />} 
-                title={isZh ? "同步演示" : "Reset Demo"} 
-                onClick={handleFactoryReset} 
-                color="text-amber-600" 
-              />
-              <ToolButton 
-                icon={<Download size={24} />} 
-                title={isZh ? "导出" : "Export"} 
-                onClick={() => exportToExcel(currentData)} 
-                color="text-blue-500" 
-              />
-              <ToolButton 
-                icon={<Trash2 size={24} />} 
-                title={isZh ? "清空" : "Clear"} 
-                onClick={handleClearData} 
-                color="text-rose-600" 
-                isDanger 
-              />
+              <ToolButton icon={<Eye size={24} />} title={isZh ? "审查数据" : "Review"} onClick={() => { setIsReviewingCurrent(true); setActivePreviewTab('成员'); }} color="text-emerald-500" />
+              <ToolButton icon={<RefreshCw size={24} />} title={isZh ? "同步演示" : "Reset Demo"} onClick={handleFactoryReset} color="text-amber-600" />
+              <ToolButton icon={<Download size={24} />} title={isZh ? "导出" : "Export"} onClick={() => exportToExcel(currentData)} color="text-blue-500" />
+              <ToolButton icon={<Trash2 size={24} />} title={isZh ? "清空" : "Clear"} onClick={handleClearData} color="text-rose-600" isDanger />
             </div>
           </div>
-
           <div className="glass-card rounded-[48px] p-10 lg:p-14 bg-white/40 backdrop-blur-3xl border border-white/60 shadow-lg relative overflow-hidden">
             <div className="absolute -top-12 -right-12 w-96 h-96 bg-indigo-500/10 blur-[150px] rounded-full"></div>
-            
             <div className="flex items-center gap-8 mb-10 relative z-10">
               <div className="w-16 h-16 bg-indigo-600 text-white rounded-[24px] flex items-center justify-center shadow-lg"><Languages size={32} /></div>
               <div>
@@ -281,7 +259,6 @@ const DataManagementView: React.FC = () => {
                 <p className="text-[11px] lg:text-[13px] font-black uppercase tracking-[0.3em] text-slate-400 mt-2">{isZh ? '偏好与标签维护协议' : 'Global preferences & tag maintenance'}</p>
               </div>
             </div>
-
             <div className="grid grid-cols-1 xl:grid-cols-[340px_1fr] gap-12 lg:gap-16 relative z-10">
               <div className="space-y-8">
                 <div className="space-y-4">
@@ -291,18 +268,14 @@ const DataManagementView: React.FC = () => {
                     <button onClick={() => setSettings({...settings, language: 'en'})} className={`py-4 text-[13px] font-black uppercase tracking-widest rounded-[18px] transition-all ${settings.language === 'en' ? 'bg-white shadow-xl text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>English</button>
                   </div>
                 </div>
-                
                 <div className="p-8 rounded-[32px] bg-emerald-500/5 border border-emerald-500/10 shadow-sm">
                   <div className="flex items-center gap-4 text-emerald-600 mb-3">
                     <Database size={24} />
                     <span className="font-black text-[11px] lg:text-[13px] uppercase tracking-widest">{isZh ? '本地存储状态' : 'Storage Protocol'}</span>
                   </div>
-                  <p className="text-[13px] lg:text-[15px] text-slate-500 leading-relaxed font-medium italic">
-                    {isZh ? '所有资产信息均仅存储于您的浏览器 LocalStorage 中。' : 'All asset info stored locally in browser.'}
-                  </p>
+                  <p className="text-[13px] lg:text-[15px] text-slate-500 leading-relaxed font-medium italic">{isZh ? '所有资产信息均仅存储于您的浏览器 LocalStorage 中。' : 'All asset info stored locally in browser.'}</p>
                 </div>
               </div>
-
               <div className="space-y-6">
                 <label className="flex items-center gap-3 text-[12px] lg:text-[14px] font-black text-slate-500 uppercase tracking-[0.2em]"><Tag size={20} className="text-blue-500" /> {isZh ? '全域标签管理' : 'Global Tag Explorer'}</label>
                 <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6 overflow-y-auto max-h-[500px] pr-4 custom-scrollbar-wide">
@@ -310,15 +283,9 @@ const DataManagementView: React.FC = () => {
                     <div key={key} className="space-y-4 bg-white/30 p-6 rounded-[32px] border border-white/40 shadow-sm flex flex-col hover:bg-white/50 transition-all">
                       <p className="text-[10px] lg:text-[12px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">{config.label}</p>
                       <div className="flex flex-wrap gap-2.5 flex-1 content-start">
-                        {tagData[key].length > 0 ? tagData[key].map((t, i) => (
-                          <button 
-                            key={i} 
-                            // Fix: Use 'key' which is correctly scoped within the map iteration.
-                            onClick={() => handleRenameTag(key, t)}
-                            className={`group flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[12px] lg:text-[13px] font-black uppercase tracking-tight shadow-sm border border-black/5 hover:scale-105 active:scale-95 transition-all ${config.color}`}
-                          >
-                            {t}
-                            <Edit3 size={12} className="opacity-0 group-hover:opacity-40 transition-opacity" />
+                        {tagData[key]?.length > 0 ? tagData[key].map((t, i) => (
+                          <button key={i} onClick={() => handleRenameTag(key, t)} className={`group flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[12px] lg:text-[13px] font-black uppercase tracking-tight shadow-sm border border-black/5 hover:scale-105 active:scale-95 transition-all ${config.color}`}>
+                            {t} <Edit3 size={12} className="opacity-0 group-hover:opacity-40 transition-opacity" />
                           </button>
                         )) : <span className="text-[12px] text-slate-300 italic">None</span>}
                       </div>
@@ -330,7 +297,6 @@ const DataManagementView: React.FC = () => {
           </div>
         </div>
       )}
-
       {previewData && (
         <div className="space-y-8 animate-in slide-in-from-bottom-16 duration-1000">
           <div className={`glass-card rounded-[40px] p-8 lg:p-12 flex flex-col md:flex-row items-center justify-between border-none shadow-3xl relative overflow-hidden transition-all duration-700 ${isIncoming ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white' : 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white'}`}>
@@ -348,16 +314,13 @@ const DataManagementView: React.FC = () => {
               {isIncoming ? (
                 <>
                   <button onClick={handleDiscard} className="px-10 py-5 rounded-2xl text-[13px] font-black uppercase tracking-[0.2em] hover:bg-white/10 transition-all border border-white/30 backdrop-blur-md">{isZh ? '放弃' : 'Discard'}</button>
-                  <button onClick={handleCompleteOverwrite} className="px-12 py-5 bg-slate-900 text-white rounded-2xl text-[13px] font-black uppercase tracking-[0.2em] shadow-4xl hover:bg-black transition-all flex items-center gap-4">
-                    {isZh ? '确认写入' : 'Confirm Overwrite'} <ChevronRight size={20} />
-                  </button>
+                  <button onClick={handleCompleteOverwrite} className="px-12 py-5 bg-slate-900 text-white rounded-2xl text-[13px] font-black uppercase tracking-[0.2em] shadow-4xl hover:bg-black transition-all flex items-center gap-4">{isZh ? '确认写入' : 'Confirm Overwrite'} <ChevronRight size={20} /></button>
                 </>
               ) : (
                 <button onClick={() => setIsReviewingCurrent(false)} className="px-12 py-5 bg-white/20 text-white rounded-2xl text-[13px] font-black uppercase tracking-[0.2em] backdrop-blur-xl border border-white/30 hover:bg-white/30 transition-all flex items-center gap-4"><X size={24} /> {isZh ? '退出预览' : 'Exit Review'}</button>
               )}
             </div>
           </div>
-
           <div className="flex flex-col xl:flex-row gap-10 min-h-[700px]">
             <div className="w-full xl:w-96 glass-card rounded-[40px] p-6 flex flex-col bg-white/30 backdrop-blur-xl border-white/60 shadow-xl">
                <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-2">
@@ -381,9 +344,7 @@ const DataManagementView: React.FC = () => {
               <div className="flex-1 overflow-auto custom-scrollbar-wide bg-white/20">
                 <table className="w-full text-left border-separate border-spacing-0">
                   <thead className="sticky top-0 z-10">
-                    <tr>
-                      {EXCEL_STRUCTURE[activePreviewTab].map(col => (<th key={col} className="px-10 py-8 bg-white/80 backdrop-blur-xl text-[12px] lg:text-[14px] font-black text-slate-400 uppercase tracking-[0.3em] border-b border-white/30 whitespace-nowrap">{col}</th>))}
-                    </tr>
+                    <tr>{EXCEL_STRUCTURE[activePreviewTab].map(col => (<th key={col} className="px-10 py-8 bg-white/80 backdrop-blur-xl text-[12px] lg:text-[14px] font-black text-slate-400 uppercase tracking-[0.3em] border-b border-white/30 whitespace-nowrap">{col}</th>))}</tr>
                   </thead>
                   <tbody className="text-sm">
                     {(previewData[activePreviewTab] as any[]).map((row, i) => (
